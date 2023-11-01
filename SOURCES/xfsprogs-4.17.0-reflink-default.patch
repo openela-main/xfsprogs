@@ -1,0 +1,74 @@
+Index: xfsprogs-4.19.0/mkfs/xfs_mkfs.c
+===================================================================
+--- xfsprogs-4.19.0.orig/mkfs/xfs_mkfs.c
++++ xfsprogs-4.19.0/mkfs/xfs_mkfs.c
+@@ -1973,15 +1973,15 @@ _("Directory ftype field always enabled 
+ 			usage();
+ 		}
+ 
+-	} else {
++	} else {	/* !crcs_enabled */
+ 		/*
+-		 * The kernel doesn't currently support crc=0,finobt=1
+-		 * filesystems. If crcs are not enabled and the user has not
+-		 * explicitly turned finobt on, then silently turn it off to
+-		 * avoid an unnecessary warning.
++		 * The kernel doesn't support crc=0,finobt=1 filesystems.
++		 * If crcs are not enabled and the user has not explicitly
++		 * turned finobt on, then silently turn it off to avoid an
++		 * unnecessary warning.
+ 		 * If the user explicitly tried to use crc=0,finobt=1,
+ 		 * then issue an error.
+-		 * The same is also for sparse inodes.
++		 * The same is also true for sparse inodes and reflink.
+ 		 */
+ 		if (cli->sb_feat.finobt && cli_opt_set(&mopts, M_FINOBT)) {
+ 			fprintf(stderr,
+@@ -2004,7 +2004,7 @@ _("rmapbt not supported without CRC supp
+ 		}
+ 		cli->sb_feat.rmapbt = false;
+ 
+-		if (cli->sb_feat.reflink) {
++		if (cli->sb_feat.reflink && cli_opt_set(&mopts, M_REFLINK)) {
+ 			fprintf(stderr,
+ _("reflink not supported without CRC support\n"));
+ 			usage();
+@@ -3788,7 +3788,7 @@ main(
+ 			.finobt = true,
+ 			.spinodes = true,
+ 			.rmapbt = false,
+-			.reflink = false,
++			.reflink = true,
+ 			.parent_pointers = false,
+ 			.nodalign = false,
+ 			.nortalign = false,
+Index: xfsprogs-4.19.0/man/man8/mkfs.xfs.8
+===================================================================
+--- xfsprogs-4.19.0.orig/man/man8/mkfs.xfs.8
++++ xfsprogs-4.19.0/man/man8/mkfs.xfs.8
+@@ -229,9 +229,9 @@ mapping will be changed to the new block
+ enables the creation of per-file snapshots and deduplication.  It is only
+ available for the data forks of regular files.
+ .IP
+-By default,
++By default in Red Hat Enterprise Linux 8,
+ .B mkfs.xfs
+-will not create reference count btrees and therefore will not enable the
++will create reference count btrees and therefore will enable the
+ reflink feature.  This feature is only available for filesystems created with
+ the (default)
+ .B \-m crc=1
+@@ -239,6 +239,13 @@ option set. When the option
+ .B \-m crc=0
+ is used, the reference count btree feature is not supported and reflink is
+ disabled.
++.IP
++Note: the filesystem DAX mount option (
++.B \-o dax
++) is incompatible with
++reflink-enabled XFS filesystems.  To use filesystem DAX with XFS, specify the
++.B \-m reflink=0
++option to mkfs.xfs to disable the reflink feature.
+ .RE
+ .TP
+ .BI \-d " data_section_options"

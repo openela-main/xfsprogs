@@ -1,0 +1,54 @@
+From cae4fd291266c32441c6a7fcca49929fe11c391c Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 10 Jul 2020 15:35:44 -0400
+Subject: [PATCH] xfs_repair: check for AG btree records that would wrap around
+
+For AG btree types, make sure that each record's length is not so huge
+that integer wraparound would happen.
+
+Found via xfs/358 fuzzing recs[1].blockcount = ones.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ repair/scan.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/repair/scan.c b/repair/scan.c
+index 5c8d8b23..1ddb5763 100644
+--- a/repair/scan.c
++++ b/repair/scan.c
+@@ -684,7 +684,8 @@ _("%s freespace btree block claimed (state %d), agno %d, bno %d, suspect %d\n"),
+ 					b, i, name, agno, bno);
+ 				continue;
+ 			}
+-			if (len == 0 || !verify_agbno(mp, agno, end - 1)) {
++			if (len == 0 || end <= b ||
++			    !verify_agbno(mp, agno, end - 1)) {
+ 				do_warn(
+ 	_("invalid length %u in record %u of %s btree block %u/%u\n"),
+ 					len, i, name, agno, bno);
+@@ -1066,7 +1067,8 @@ _("%s rmap btree block claimed (state %d), agno %d, bno %d, suspect %d\n"),
+ 					b, i, name, agno, bno);
+ 				continue;
+ 			}
+-			if (len == 0 || !verify_agbno(mp, agno, end - 1)) {
++			if (len == 0 || end <= b ||
++			    !verify_agbno(mp, agno, end - 1)) {
+ 				do_warn(
+ 	_("invalid length %u in record %u of %s btree block %u/%u\n"),
+ 					len, i, name, agno, bno);
+@@ -1353,7 +1355,8 @@ _("leftover CoW extent has invalid startblock in record %u of %s btree block %u/
+ 					b, i, name, agno, bno);
+ 				continue;
+ 			}
+-			if (len == 0 || !verify_agbno(mp, agno, end - 1)) {
++			if (len == 0 || end <= agb ||
++			    !verify_agbno(mp, agno, end - 1)) {
+ 				do_warn(
+ 	_("invalid length %u in record %u of %s btree block %u/%u\n"),
+ 					len, i, name, agno, bno);
+-- 
+2.29.2
+

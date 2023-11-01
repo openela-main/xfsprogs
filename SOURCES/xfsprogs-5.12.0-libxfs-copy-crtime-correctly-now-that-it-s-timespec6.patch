@@ -1,0 +1,29 @@
+From d625f74125863304d111f5c6a0817a115f8e502d Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Fri, 7 May 2021 10:42:17 -0400
+Subject: [PATCH] libxfs: copy crtime correctly now that it's timespec64
+
+The incore i_mtime and di_crtime are both timespec64 now, which means
+that tv_sec is a 64-bit value.  Don't cast that to int32_t when we're
+creating an inode, because we'll end up truncating the creation time
+incorrectly, should an xfsprogs of this vintage make it to 2039. :P
+
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/util.c b/libxfs/util.c
+index 7a8729f..fd4906f 100644
+--- a/libxfs/util.c
++++ b/libxfs/util.c
+@@ -326,8 +326,7 @@ libxfs_ialloc(
+ 			ip->i_d.di_flags2 = xfs_flags2diflags2(ip, fsx->fsx_xflags);
+ 		}
+ 
+-		ip->i_d.di_crtime.tv_sec = (int32_t)VFS_I(ip)->i_mtime.tv_sec;
+-		ip->i_d.di_crtime.tv_nsec = (int32_t)VFS_I(ip)->i_mtime.tv_nsec;
++		ip->i_d.di_crtime = VFS_I(ip)->i_mtime; /* struct copy */
+ 		ip->i_d.di_cowextsize = pip ? 0 : fsx->fsx_cowextsize;
+ 	}
+ 

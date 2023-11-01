@@ -1,0 +1,101 @@
+From fc3e21db4a30d0d81158938cabba0fb59fc57ad8 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Wed, 11 Nov 2020 13:48:47 -0500
+Subject: [PATCH] xfs: redefine xfs_ictimestamp_t
+
+Source kernel commit: 30e05599219f3c15bd5f24190af0e33cdb4a00e5
+
+Redefine xfs_ictimestamp_t as a uint64_t typedef in preparation for the
+bigtime functionality.  Preserve the legacy structure format so that we
+can let the compiler take care of the masking and shifting.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Gao Xiang <hsiangkao@redhat.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_log_format.h b/libxfs/xfs_log_format.h
+index e5f97c6..8dc0df0 100644
+--- a/libxfs/xfs_log_format.h
++++ b/libxfs/xfs_log_format.h
+@@ -368,10 +368,13 @@ static inline int xfs_ilog_fdata(int w)
+  * directly mirrors the xfs_dinode structure as it must contain all the same
+  * information.
+  */
+-typedef struct xfs_ictimestamp {
++typedef uint64_t xfs_ictimestamp_t;
++
++/* Legacy timestamp encoding format. */
++struct xfs_legacy_ictimestamp {
+ 	int32_t		t_sec;		/* timestamp seconds */
+ 	int32_t		t_nsec;		/* timestamp nanoseconds */
+-} xfs_ictimestamp_t;
++};
+ 
+ /*
+  * Define the format of the inode core that is logged. This structure must be
+diff --git a/logprint/log_misc.c b/logprint/log_misc.c
+index c325f04..4fad82b 100644
+--- a/logprint/log_misc.c
++++ b/logprint/log_misc.c
+@@ -446,8 +446,10 @@ xlog_print_trans_inode_core(
+ 	   (int)ip->di_format);
+     printf(_("nlink %hd uid %d gid %d\n"),
+ 	   ip->di_nlink, ip->di_uid, ip->di_gid);
+-    printf(_("atime 0x%x mtime 0x%x ctime 0x%x\n"),
+-	   ip->di_atime.t_sec, ip->di_mtime.t_sec, ip->di_ctime.t_sec);
++    printf(_("atime 0x%llx mtime 0x%llx ctime 0x%llx\n"),
++		xlog_extract_dinode_ts(ip->di_atime),
++		xlog_extract_dinode_ts(ip->di_mtime),
++		xlog_extract_dinode_ts(ip->di_ctime));
+     printf(_("size 0x%llx nblocks 0x%llx extsize 0x%x nextents 0x%x\n"),
+ 	   (unsigned long long)ip->di_size, (unsigned long long)ip->di_nblocks,
+ 	   ip->di_extsize, ip->di_nextents);
+@@ -739,6 +741,16 @@ xlog_print_trans_icreate(
+  ******************************************************************************
+  */
+ 
++time64_t
++xlog_extract_dinode_ts(
++	const xfs_ictimestamp_t		its)
++{
++	struct xfs_legacy_ictimestamp	*lits;
++
++	lits = (struct xfs_legacy_ictimestamp *)&its;
++	return (time64_t)lits->t_sec;
++}
++
+ void
+ xlog_print_lseek(struct xlog *log, int fd, xfs_daddr_t blkno, int whence)
+ {
+diff --git a/logprint/log_print_all.c b/logprint/log_print_all.c
+index eafffe2..3ca01b1 100644
+--- a/logprint/log_print_all.c
++++ b/logprint/log_print_all.c
+@@ -249,8 +249,10 @@ xlog_recover_print_inode_core(
+ 	printf(_("		uid:%d  gid:%d  nlink:%d projid:0x%04x%04x\n"),
+ 	       di->di_uid, di->di_gid, di->di_nlink,
+ 	       di->di_projid_hi, di->di_projid_lo);
+-	printf(_("		atime:%d  mtime:%d  ctime:%d\n"),
+-	       di->di_atime.t_sec, di->di_mtime.t_sec, di->di_ctime.t_sec);
++	printf(_("		atime:%lld  mtime:%lld  ctime:%lld\n"),
++			xlog_extract_dinode_ts(di->di_atime),
++			xlog_extract_dinode_ts(di->di_mtime),
++			xlog_extract_dinode_ts(di->di_ctime));
+ 	printf(_("		flushiter:%d\n"), di->di_flushiter);
+ 	printf(_("		size:0x%llx  nblks:0x%llx  exsize:%d  "
+ 	     "nextents:%d  anextents:%d\n"), (unsigned long long)
+diff --git a/logprint/logprint.h b/logprint/logprint.h
+index 98ac0d4..0061d5a 100644
+--- a/logprint/logprint.h
++++ b/logprint/logprint.h
+@@ -18,6 +18,7 @@ extern int	print_no_data;
+ extern int	print_no_print;
+ 
+ /* exports */
++extern time64_t xlog_extract_dinode_ts(const xfs_ictimestamp_t);
+ extern void xlog_print_lseek(struct xlog *, int, xfs_daddr_t, int);
+ 
+ extern void xfs_log_copy(struct xlog *, int, char *);

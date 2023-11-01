@@ -1,0 +1,52 @@
+From 387a96e12a937c1b2ee29a0f2c52245d6a283078 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Mon, 24 Aug 2020 13:23:32 -0400
+Subject: [PATCH] xfs_quota: display warning limits when printing quota type
+ information
+
+We should dump the default warning limits when we're printing quota
+information.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ quota/state.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/quota/state.c b/quota/state.c
+index 7a595fc6..1627181d 100644
+--- a/quota/state.c
++++ b/quota/state.c
+@@ -130,6 +130,16 @@ state_timelimit(
+ 		time_to_string(timelimit, VERBOSE_FLAG | ABSOLUTE_FLAG));
+ }
+ 
++static void
++state_warnlimit(
++	FILE		*fp,
++	uint		form,
++	uint16_t	warnlimit)
++{
++	fprintf(fp, _("%s max warnings: %u\n"),
++		form_to_string(form), warnlimit);
++}
++
+ /*
+  * fs_quota_stat holds a subset of fs_quota_statv; this copies
+  * the smaller into the larger, leaving any not-present fields
+@@ -218,7 +228,11 @@ state_quotafile_mount(
+ 				sv.qs_flags & XFS_QUOTA_PDQ_ENFD);
+ 
+ 	state_timelimit(fp, XFS_BLOCK_QUOTA, sv.qs_btimelimit);
++	state_warnlimit(fp, XFS_BLOCK_QUOTA, sv.qs_bwarnlimit);
++
+ 	state_timelimit(fp, XFS_INODE_QUOTA, sv.qs_itimelimit);
++	state_warnlimit(fp, XFS_INODE_QUOTA, sv.qs_iwarnlimit);
++
+ 	state_timelimit(fp, XFS_RTBLOCK_QUOTA, sv.qs_rtbtimelimit);
+ }
+ 
+-- 
+2.31.1
+

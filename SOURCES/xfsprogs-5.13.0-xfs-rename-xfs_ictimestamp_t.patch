@@ -1,0 +1,77 @@
+From 27bb0efa5e615a9162f5bc3e228bdb7c337faa4c Mon Sep 17 00:00:00 2001
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 30 Jun 2021 18:38:58 -0400
+Subject: [PATCH] xfs: rename xfs_ictimestamp_t
+
+Source kernel commit: 6fc277c7c935c7e1fdee23e82da988d9d3cb6bef
+
+Rename xfs_ictimestamp_t to xfs_log_timestamp_t as it is a type used
+for logging timestamps with no relationship to the in-core inode.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_log_format.h b/libxfs/xfs_log_format.h
+index 8dc0df0..85ac52c 100644
+--- a/libxfs/xfs_log_format.h
++++ b/libxfs/xfs_log_format.h
+@@ -368,7 +368,7 @@ static inline int xfs_ilog_fdata(int w)
+  * directly mirrors the xfs_dinode structure as it must contain all the same
+  * information.
+  */
+-typedef uint64_t xfs_ictimestamp_t;
++typedef uint64_t xfs_log_timestamp_t;
+ 
+ /* Legacy timestamp encoding format. */
+ struct xfs_legacy_ictimestamp {
+@@ -393,9 +393,9 @@ struct xfs_log_dinode {
+ 	uint16_t	di_projid_hi;	/* higher part of owner's project id */
+ 	uint8_t		di_pad[6];	/* unused, zeroed space */
+ 	uint16_t	di_flushiter;	/* incremented on flush */
+-	xfs_ictimestamp_t di_atime;	/* time last accessed */
+-	xfs_ictimestamp_t di_mtime;	/* time last modified */
+-	xfs_ictimestamp_t di_ctime;	/* time created/inode modified */
++	xfs_log_timestamp_t di_atime;	/* time last accessed */
++	xfs_log_timestamp_t di_mtime;	/* time last modified */
++	xfs_log_timestamp_t di_ctime;	/* time created/inode modified */
+ 	xfs_fsize_t	di_size;	/* number of bytes in file */
+ 	xfs_rfsblock_t	di_nblocks;	/* # of direct & btree blocks used */
+ 	xfs_extlen_t	di_extsize;	/* basic/minimum extent size for file */
+@@ -420,7 +420,7 @@ struct xfs_log_dinode {
+ 	uint8_t		di_pad2[12];	/* more padding for future expansion */
+ 
+ 	/* fields only written to during inode creation */
+-	xfs_ictimestamp_t di_crtime;	/* time created */
++	xfs_log_timestamp_t di_crtime;	/* time created */
+ 	xfs_ino_t	di_ino;		/* inode number */
+ 	uuid_t		di_uuid;	/* UUID of the filesystem */
+ 
+diff --git a/logprint/log_misc.c b/logprint/log_misc.c
+index 4fad82b..f4fd7a8 100644
+--- a/logprint/log_misc.c
++++ b/logprint/log_misc.c
+@@ -743,7 +743,7 @@ xlog_print_trans_icreate(
+ 
+ time64_t
+ xlog_extract_dinode_ts(
+-	const xfs_ictimestamp_t		its)
++	const xfs_log_timestamp_t	its)
+ {
+ 	struct xfs_legacy_ictimestamp	*lits;
+ 
+diff --git a/logprint/logprint.h b/logprint/logprint.h
+index 0061d5a..fe3831d 100644
+--- a/logprint/logprint.h
++++ b/logprint/logprint.h
+@@ -18,7 +18,7 @@ extern int	print_no_data;
+ extern int	print_no_print;
+ 
+ /* exports */
+-extern time64_t xlog_extract_dinode_ts(const xfs_ictimestamp_t);
++extern time64_t xlog_extract_dinode_ts(const xfs_log_timestamp_t);
+ extern void xlog_print_lseek(struct xlog *, int, xfs_daddr_t, int);
+ 
+ extern void xfs_log_copy(struct xlog *, int, char *);

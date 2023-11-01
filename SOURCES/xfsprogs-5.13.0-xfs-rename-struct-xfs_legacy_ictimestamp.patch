@@ -1,0 +1,46 @@
+From 59301887102cc0415c8350a5e9562fe4beb083b6 Mon Sep 17 00:00:00 2001
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 30 Jun 2021 18:38:58 -0400
+Subject: [PATCH] xfs: rename struct xfs_legacy_ictimestamp
+
+Source kernel commit: 732de7dbdbd30df40a6d260a8da6fc5262039439
+
+Rename struct xfs_legacy_ictimestamp to struct xfs_log_legacy_timestamp
+as it is a type used for logging timestamps with no relationship to the
+in-core inode.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_log_format.h b/libxfs/xfs_log_format.h
+index 85ac52c..bc26894 100644
+--- a/libxfs/xfs_log_format.h
++++ b/libxfs/xfs_log_format.h
+@@ -371,7 +371,7 @@ static inline int xfs_ilog_fdata(int w)
+ typedef uint64_t xfs_log_timestamp_t;
+ 
+ /* Legacy timestamp encoding format. */
+-struct xfs_legacy_ictimestamp {
++struct xfs_log_legacy_timestamp {
+ 	int32_t		t_sec;		/* timestamp seconds */
+ 	int32_t		t_nsec;		/* timestamp nanoseconds */
+ };
+diff --git a/logprint/log_misc.c b/logprint/log_misc.c
+index f4fd7a8..4889e65 100644
+--- a/logprint/log_misc.c
++++ b/logprint/log_misc.c
+@@ -745,9 +745,9 @@ time64_t
+ xlog_extract_dinode_ts(
+ 	const xfs_log_timestamp_t	its)
+ {
+-	struct xfs_legacy_ictimestamp	*lits;
++	struct xfs_log_legacy_timestamp	*lits;
+ 
+-	lits = (struct xfs_legacy_ictimestamp *)&its;
++	lits = (struct xfs_log_legacy_timestamp *)&its;
+ 	return (time64_t)lits->t_sec;
+ }
+ 

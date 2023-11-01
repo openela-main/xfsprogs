@@ -1,0 +1,42 @@
+From bdeb014153934e1d98787a9609a7532baf6a5c37 Mon Sep 17 00:00:00 2001
+From: Zorro Lang <zlang@redhat.com>
+Date: Tue, 6 Apr 2021 16:56:32 -0400
+Subject: [PATCH] libxfs: expose inobtcount in xfs geometry
+
+Source kernel commit: bc41fa5321f93ecbabec177f888451cfc17ad66d
+
+As xfs supports the feature of inode btree block counters now, expose
+this feature flag in xfs geometry, for userspace can check if the
+inobtcnt is enabled or not.
+
+Signed-off-by: Zorro Lang <zlang@redhat.com>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_fs.h b/libxfs/xfs_fs.h
+index 714dba1..4e4a22e 100644
+--- a/libxfs/xfs_fs.h
++++ b/libxfs/xfs_fs.h
+@@ -232,6 +232,7 @@ typedef struct xfs_fsop_resblks {
+ #define XFS_FSOP_GEOM_FLAGS_RMAPBT	0x80000	/* reverse mapping btree */
+ #define XFS_FSOP_GEOM_FLAGS_REFLINK	0x100000 /* files can share blocks */
+ #define XFS_FSOP_GEOM_FLAGS_BIGTIME	0x200000 /* 64-bit nsec timestamps */
++#define XFS_FSOP_GEOM_FLAGS_INOBTCNT	0x400000 /* inobt btree counter */
+ 
+ /*
+  * Minimum and maximum sizes need for growth checks.
+diff --git a/libxfs/xfs_sb.c b/libxfs/xfs_sb.c
+index d11545b..6249e9a 100644
+--- a/libxfs/xfs_sb.c
++++ b/libxfs/xfs_sb.c
+@@ -1126,6 +1126,8 @@ xfs_fs_geometry(
+ 		geo->flags |= XFS_FSOP_GEOM_FLAGS_REFLINK;
+ 	if (xfs_sb_version_hasbigtime(sbp))
+ 		geo->flags |= XFS_FSOP_GEOM_FLAGS_BIGTIME;
++	if (xfs_sb_version_hasinobtcounts(sbp))
++		geo->flags |= XFS_FSOP_GEOM_FLAGS_INOBTCNT;
+ 	if (xfs_sb_version_hassector(sbp))
+ 		geo->logsectsize = sbp->sb_logsectsize;
+ 	else

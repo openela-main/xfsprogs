@@ -1,0 +1,70 @@
+From 7e8275f8939988f18f9a4a596381ca215fde2270 Mon Sep 17 00:00:00 2001
+From: Eric Sandeen <sandeen@redhat.com>
+Date: Mon, 4 Nov 2019 15:35:49 -0500
+Subject: [PATCH] xfs_growfs: allow mounted device node as argument
+
+Up until:
+
+ b97815a0 xfs_growfs: ensure target path is an active xfs mountpoint
+
+xfs_growfs actually accepted a mounted block device name as the
+primary argument, because it could be found in the mount table.
+
+It turns out that Ansible was making use of this undocumented behavior,
+and it's trivial to allow it, so put it back in place and document
+it this time.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ growfs/xfs_growfs.c   |  3 +++
+ man/man8/xfs_growfs.8 | 10 +++++++++-
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/growfs/xfs_growfs.c b/growfs/xfs_growfs.c
+index eab15984..6c62833b 100644
+--- a/growfs/xfs_growfs.c
++++ b/growfs/xfs_growfs.c
+@@ -141,6 +141,9 @@ main(int argc, char **argv)
+ 	}
+ 
+ 	fs = fs_table_lookup_mount(rpath);
++	if (!fs)
++		fs = fs_table_lookup_blkdev(rpath);
++
+ 	if (!fs) {
+ 		fprintf(stderr, _("%s: %s is not a mounted XFS filesystem\n"),
+ 			progname, argv[optind]);
+diff --git a/man/man8/xfs_growfs.8 b/man/man8/xfs_growfs.8
+index 7e6a387c..60a88189 100644
+--- a/man/man8/xfs_growfs.8
++++ b/man/man8/xfs_growfs.8
+@@ -35,7 +35,12 @@ xfs_growfs \- expand an XFS filesystem
+ .B \-R
+ .I size
+ ]
++[
+ .I mount-point
++|
++.I block-device
++]
++
+ .br
+ .B xfs_growfs \-V
+ .SH DESCRIPTION
+@@ -45,7 +50,10 @@ expands an existing XFS filesystem (see
+ The
+ .I mount-point
+ argument is the pathname of the directory where the filesystem
+-is mounted. The filesystem must be mounted to be grown (see
++is mounted. The
++.I block-device
++argument is the device name of a mounted XFS filesystem.
++The filesystem must be mounted to be grown (see
+ .BR mount (8)).
+ The existing contents of the filesystem are undisturbed, and the added space
+ becomes available for additional file storage.
+-- 
+2.17.0
+

@@ -1,0 +1,35 @@
+From 0d7b09ac95e4cde766a534fdb7ea8dd46451ad53 Mon Sep 17 00:00:00 2001
+From: Eric Sandeen <sandeen@redhat.com>
+Date: Fri, 4 Dec 2020 12:17:12 -0500
+Subject: [PATCH] xfs_quota: document how the default quota is stored
+
+Nowhere in the man page is the default quota described; what it
+does or where it is stored.  Add some brief information about this.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ man/man8/xfs_quota.8 | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/man/man8/xfs_quota.8 b/man/man8/xfs_quota.8
+index dd0479cd..6ead7ee9 100644
+--- a/man/man8/xfs_quota.8
++++ b/man/man8/xfs_quota.8
+@@ -178,6 +178,12 @@ to a file on
+ where the user's quota has not been exceeded.
+ Then after rectifying the quota situation, the file can be moved back to the
+ filesystem it belongs on.
++.SS Default Quotas
++The XFS quota subsystem allows a default quota to be enforced
++for any user, group or project which does not have a quota limit
++explicitly set.
++These limits are stored in and displayed as ID 0's limits, although they
++do not actually limit ID 0.
+ .SH USER COMMANDS
+ .TP
+ .B print
+-- 
+2.29.2
+

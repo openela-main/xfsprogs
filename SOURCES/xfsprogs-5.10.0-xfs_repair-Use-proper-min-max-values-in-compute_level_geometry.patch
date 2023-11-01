@@ -1,0 +1,92 @@
+xfs_repair: Use proper min/max values in compute_level_geometry
+
+When compute_level_geometry was added it exclusively uses
+m_alloc_mnr/m_alloc_mxr but the rmap btree should be using
+m_rmap_mnr/m_rmap_mxr.  Pass those in directly to fix the
+problem.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/repair/phase5.c b/repair/phase5.c
+index 0b8a55ff..dff342c8 100644
+--- a/repair/phase5.c
++++ b/repair/phase5.c
+@@ -355,12 +355,12 @@ compute_level_geometry(
+ 	struct bt_stat_level	*lptr,
+ 	uint64_t		nr_this_level,
+ 	int			slack,
+-	bool			leaf)
++	uint			maxrecs,
++	uint			minrecs)
+ {
+-	unsigned int		maxrecs = mp->m_alloc_mxr[!leaf];
+ 	unsigned int		desired_npb;
+ 
+-	desired_npb = max(mp->m_alloc_mnr[!leaf], maxrecs - slack);
++	desired_npb = max(minrecs, maxrecs - slack);
+ 	lptr->num_recs_tot = nr_this_level;
+ 	lptr->num_blocks = max(1ULL, nr_this_level / desired_npb);
+ 
+@@ -410,7 +410,8 @@ calculate_freespace_cursor(xfs_mount_t *mp, xfs_agnumber_t agno,
+ 	 * of the tree and set up the cursor for the leaf level
+ 	 * (note that the same code is duplicated further down)
+ 	 */
+-	compute_level_geometry(mp, lptr, num_extents, 2, true);
++	compute_level_geometry(mp, lptr, num_extents, 2,
++			mp->m_alloc_mxr[0], mp->m_alloc_mnr[0]);
+ 	level = 1;
+ 
+ #ifdef XR_BLD_FREE_TRACE
+@@ -429,7 +430,8 @@ calculate_freespace_cursor(xfs_mount_t *mp, xfs_agnumber_t agno,
+ 		lptr = &btree_curs->level[level];
+ 
+ 		compute_level_geometry(mp, lptr,
+-				p_lptr->num_blocks, 0, false);
++				p_lptr->num_blocks, 0,
++				mp->m_alloc_mxr[1], mp->m_alloc_mnr[1]);
+ #ifdef XR_BLD_FREE_TRACE
+ 		fprintf(stderr, "%s %d %d %d %d %d\n", __func__,
+ 				level,
+@@ -509,7 +511,8 @@ calculate_freespace_cursor(xfs_mount_t *mp, xfs_agnumber_t agno,
+ 	 * of the number of extents changing
+ 	 */
+ 	old_blocks = btree_curs->level[0].num_blocks;
+-	compute_level_geometry(mp, &btree_curs->level[0], num_extents, 2, true);
++	compute_level_geometry(mp, &btree_curs->level[0], num_extents, 2,
++				mp->m_alloc_mxr[0], mp->m_alloc_mnr[0]);
+ 	extra_blocks = 0;
+ 
+ 	if (old_blocks != btree_curs->level[0].num_blocks)  {
+@@ -578,7 +581,8 @@ calculate_freespace_cursor(xfs_mount_t *mp, xfs_agnumber_t agno,
+ 			lptr = &btree_curs->level[level++];
+ 
+ 			compute_level_geometry(mp, lptr,
+-					p_lptr->num_blocks, 0, false);
++					p_lptr->num_blocks, 0,
++					mp->m_alloc_mxr[1], mp->m_alloc_mnr[1]);
+ 		}
+ 		ASSERT(level < XFS_BTREE_MAXLEVELS);
+ 		ASSERT(lptr->num_blocks == 1);
+@@ -1399,7 +1403,8 @@ init_rmapbt_cursor(
+ 	 * metadata AG entries without too many splits.
+ 	 */
+ 	compute_level_geometry(mp, lptr, num_recs,
+-			num_recs > mp->m_rmap_mxr[0] ? 10 : 0, true);
++			num_recs > mp->m_rmap_mxr[0] ? 10 : 0,
++			mp->m_rmap_mxr[0], mp->m_rmap_mnr[0]);
+ 	blocks_allocated = lptr->num_blocks;
+ 	level = 1;
+ 
+@@ -1408,7 +1413,8 @@ init_rmapbt_cursor(
+ 		lptr = &btree_curs->level[level++];
+ 
+ 		compute_level_geometry(mp, lptr,
+-				p_lptr->num_blocks, 0, false);
++				p_lptr->num_blocks, 0,
++				mp->m_rmap_mxr[1], mp->m_rmap_mnr[1]);
+ 		blocks_allocated += lptr->num_blocks;
+ 	}
+ 	ASSERT(level < XFS_BTREE_MAXLEVELS);
+
+
