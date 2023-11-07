@@ -1,0 +1,69 @@
+From 798d43495df2c8a09a73b8e868a71d8f2fd81d5e Mon Sep 17 00:00:00 2001
+From: Andrey Strachuk <strochuk@ispras.ru>
+Date: Wed, 24 Aug 2022 10:24:01 +0200
+Subject: [PATCH] xfs: removed useless condition in function xfs_attr_node_get
+
+Source kernel commit: 0f38063d7a38015a47ca1488406bf21e0effe80e
+
+At line 1561, variable "state" is being compared
+with NULL every loop iteration.
+
+-------------------------------------------------------------------
+1561    for (i = 0; state != NULL && i < state->path.active; i++) {
+1562            xfs_trans_brelse(args->trans, state->path.blk[i].bp);
+1563            state->path.blk[i].bp = NULL;
+1564    }
+-------------------------------------------------------------------
+
+However, it cannot be NULL.
+
+----------------------------------------
+1546    state = xfs_da_state_alloc(args);
+----------------------------------------
+
+xfs_da_state_alloc calls kmem_cache_zalloc. kmem_cache_zalloc is
+called with __GFP_NOFAIL flag and, therefore, it cannot return NULL.
+
+--------------------------------------------------------------------------
+struct xfs_da_state *
+xfs_da_state_alloc(
+struct xfs_da_args      *args)
+{
+struct xfs_da_state     *state;
+
+state = kmem_cache_zalloc(xfs_da_state_cache, GFP_NOFS | __GFP_NOFAIL);
+state->args = args;
+state->mp = args->dp->i_mount;
+return state;
+}
+--------------------------------------------------------------------------
+
+Found by Linux Verification Center (linuxtesting.org) with SVACE.
+
+Signed-off-by: Andrey Strachuk <strochuk@ispras.ru>
+
+Fixes: 4d0cdd2bb8f0 ("xfs: clean up xfs_attr_node_hasname")
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Carlos Maiolino <cem@kernel.org>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ libxfs/xfs_attr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libxfs/xfs_attr.c b/libxfs/xfs_attr.c
+index 08973934..b451fcdb 100644
+--- a/libxfs/xfs_attr.c
++++ b/libxfs/xfs_attr.c
+@@ -1556,7 +1556,7 @@ xfs_attr_node_get(
+ 	 * If not in a transaction, we have to release all the buffers.
+ 	 */
+ out_release:
+-	for (i = 0; state != NULL && i < state->path.active; i++) {
++	for (i = 0; i < state->path.active; i++) {
+ 		xfs_trans_brelse(args->trans, state->path.blk[i].bp);
+ 		state->path.blk[i].bp = NULL;
+ 	}
+-- 
+2.40.0
+

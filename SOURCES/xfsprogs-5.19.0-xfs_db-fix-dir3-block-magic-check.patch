@@ -1,0 +1,34 @@
+From 7374f58bfeb38467bab6552a47a5cd6bbe3c2e2e Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Tue, 20 Dec 2022 16:53:34 -0800
+Subject: [PATCH] xfs_db: fix dir3 block magic check
+
+Fix this broken check, which (amazingly) went unnoticed until I cranked
+up the warning level /and/ built the system for s390x.
+
+Fixes: e96864ff4d4 ("xfs_db: enable blockget for v5 filesystems")
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+Signed-off-by: Carlos Maiolino <cem@kernel.org>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ db/check.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/db/check.c b/db/check.c
+index bb27ce58..964756d0 100644
+--- a/db/check.c
++++ b/db/check.c
+@@ -2578,7 +2578,7 @@ process_data_dir_v2(
+ 		error++;
+ 	}
+ 	if ((be32_to_cpu(data->magic) == XFS_DIR2_BLOCK_MAGIC ||
+-	     be32_to_cpu(data->magic) == XFS_DIR2_BLOCK_MAGIC) &&
++	     be32_to_cpu(data->magic) == XFS_DIR3_BLOCK_MAGIC) &&
+ 					stale != be32_to_cpu(btp->stale)) {
+ 		if (!sflag || v)
+ 			dbprintf(_("dir %lld block %d bad stale tail count %d\n"),
+-- 
+2.40.0
+
