@@ -1,0 +1,89 @@
+From ec24f6fa05f695af02b4e0fca5bc27cb1cab49b7 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Tue, 10 Nov 2020 12:05:32 -0500
+Subject: [PATCH] libxfs: create a real struct timespec64
+
+Create a real struct timespec64 that supports 64-bit seconds counts.
+The C library struct timespec doesn't support this on 32-bit
+architectures and we cannot lose the upper bits in the incore inode.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/include/libxfs.h b/include/libxfs.h
+index 731561c..2bdef70 100644
+--- a/include/libxfs.h
++++ b/include/libxfs.h
+@@ -36,8 +36,6 @@ extern uint32_t crc32c_le(uint32_t crc, unsigned char const *p, size_t len);
+ 
+ #include "xfs_cksum.h"
+ 
+-#define timespec64 timespec
+-
+ /*
+  * This mirrors the kernel include for xfs_buf.h - it's implicitly included in
+  * every files via a similar include in the kernel xfs_linux.h.
+diff --git a/include/xfs_inode.h b/include/xfs_inode.h
+index e03d1cb..ddd48be 100644
+--- a/include/xfs_inode.h
++++ b/include/xfs_inode.h
+@@ -32,15 +32,15 @@ struct xfs_dir_ops;
+  * metadata.
+  */
+ struct inode {
+-	mode_t		i_mode;
+-	uint32_t	i_nlink;
+-	xfs_dev_t	i_rdev;		/* This actually holds xfs_dev_t */
+-	unsigned long	i_state;	/* Not actually used in userspace */
+-	uint32_t	i_generation;
+-	uint64_t	i_version;
+-	struct timespec	i_atime;
+-	struct timespec	i_mtime;
+-	struct timespec	i_ctime;
++	mode_t			i_mode;
++	uint32_t		i_nlink;
++	xfs_dev_t		i_rdev;	 /* This actually holds xfs_dev_t */
++	unsigned long		i_state; /* Not actually used in userspace */
++	uint32_t		i_generation;
++	uint64_t		i_version;
++	struct timespec64	i_atime;
++	struct timespec64	i_mtime;
++	struct timespec64	i_ctime;
+ };
+ 
+ typedef struct xfs_inode {
+diff --git a/libxfs/libxfs_priv.h b/libxfs/libxfs_priv.h
+index 8232f89..b45d07e 100644
+--- a/libxfs/libxfs_priv.h
++++ b/libxfs/libxfs_priv.h
+@@ -62,8 +62,6 @@ extern kmem_zone_t *xfs_buf_zone;
+ extern kmem_zone_t *xfs_inode_zone;
+ extern kmem_zone_t *xfs_trans_zone;
+ 
+-#define timespec64 timespec
+-
+ /* CRC stuff, buffer API dependent on it */
+ #define crc32c(c,p,l)	crc32c_le((c),(unsigned char const *)(p),(l))
+ 
+diff --git a/libxfs/xfs_fs.h b/libxfs/xfs_fs.h
+index c8a3b12..fbc9031 100644
+--- a/libxfs/xfs_fs.h
++++ b/libxfs/xfs_fs.h
+@@ -686,6 +686,14 @@ struct xfs_extent_data {
+ #define XFS_IOC_CLONE_RANGE	 _IOW (0x94, 13, struct xfs_clone_args)
+ #define XFS_IOC_FILE_EXTENT_SAME _IOWR(0x94, 54, struct xfs_extent_data)
+ 
++/* 64-bit seconds counter that works independently of the C library time_t. */
++typedef long long int time64_t;
++
++struct timespec64 {
++	time64_t	tv_sec;			/* seconds */
++	long		tv_nsec;		/* nanoseconds */
++};
++
+ #ifndef HAVE_BBMACROS
+ /*
+  * Block I/O parameterization.	A basic block (BB) is the lowest size of

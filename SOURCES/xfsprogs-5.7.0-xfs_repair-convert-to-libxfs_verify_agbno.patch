@@ -1,0 +1,209 @@
+From dcd6c2e1490ba5c59c14ca8ea843ca36048888b8 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 10 Jul 2020 15:35:45 -0400
+Subject: [PATCH] xfs_repair: convert to libxfs_verify_agbno
+
+Convert the homegrown verify_agbno callers to use the libxfs function,
+as needed.  In some places we drop the "bno != 0" checks because those
+conditionals are checking btree roots; btree roots should never be
+zero if the corresponding feature bit is set; and repair skips the if
+clause entirely if the feature bit is disabled.
+
+In effect, this strengthens repair to validate that AG btree pointers
+neither point to the AG headers nor past the end of the AG.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ libxfs/libxfs_api_defs.h |  1 +
+ repair/dinode.c          | 11 -----------
+ repair/dinode.h          |  5 -----
+ repair/scan.c            | 36 +++++++++++++++++++++++-------------
+ 4 files changed, 24 insertions(+), 29 deletions(-)
+
+Index: xfsprogs-5.0.0/libxfs/libxfs_api_defs.h
+===================================================================
+--- xfsprogs-5.0.0.orig/libxfs/libxfs_api_defs.h
++++ xfsprogs-5.0.0/libxfs/libxfs_api_defs.h
+@@ -121,6 +121,7 @@
+ #define xfs_verify_agbno		libxfs_verify_agbno
+ #define xfs_verify_cksum		libxfs_verify_cksum
+ #define xfs_dinode_verify		libxfs_dinode_verify
++#define xfs_ag_block_count		libxfs_ag_block_count
+ 
+ #define xfs_alloc_ag_max_usable		libxfs_alloc_ag_max_usable
+ #define xfs_allocbt_maxrecs		libxfs_allocbt_maxrecs
+Index: xfsprogs-5.0.0/repair/dinode.c
+===================================================================
+--- xfsprogs-5.0.0.orig/repair/dinode.c
++++ xfsprogs-5.0.0/repair/dinode.c
+@@ -284,17 +284,6 @@ verify_dfsbno_range(xfs_mount_t	*mp,
+ 	return (XR_DFSBNORANGE_VALID);
+ }
+ 
+-int
+-verify_agbno(xfs_mount_t	*mp,
+-		xfs_agnumber_t	agno,
+-		xfs_agblock_t	agbno)
+-{
+-	xfs_sb_t	*sbp = &mp->m_sb;;
+-
+-	/* range check ag #, ag block.  range-checking offset is pointless */
+-	return verify_ag_bno(sbp, agno, agbno) == 0;
+-}
+-
+ static int
+ process_rt_rec(
+ 	xfs_mount_t		*mp,
+Index: xfsprogs-5.0.0/repair/dinode.h
+===================================================================
+--- xfsprogs-5.0.0.orig/repair/dinode.h
++++ xfsprogs-5.0.0/repair/dinode.h
+@@ -10,11 +10,6 @@ struct blkmap;
+ struct prefetch_args;
+ 
+ int
+-verify_agbno(xfs_mount_t	*mp,
+-		xfs_agnumber_t	agno,
+-		xfs_agblock_t	agbno);
+-
+-int
+ verify_dfsbno(xfs_mount_t	*mp,
+ 		xfs_fsblock_t	fsbno);
+ 
+Index: xfsprogs-5.0.0/repair/scan.c
+===================================================================
+--- xfsprogs-5.0.0.orig/repair/scan.c
++++ xfsprogs-5.0.0/repair/scan.c
+@@ -642,14 +642,14 @@ _("%s freespace btree block claimed (sta
+ 			len = be32_to_cpu(rp[i].ar_blockcount);
+ 			end = b + len;
+ 
+-			if (b == 0 || !verify_agbno(mp, agno, b)) {
++			if (!libxfs_verify_agbno(mp, agno, b)) {
+ 				do_warn(
+ 	_("invalid start block %u in record %u of %s btree block %u/%u\n"),
+ 					b, i, name, agno, bno);
+ 				continue;
+ 			}
+ 			if (len == 0 || end <= b ||
+-			    !verify_agbno(mp, agno, end - 1)) {
++			    !libxfs_verify_agbno(mp, agno, end - 1)) {
+ 				do_warn(
+ 	_("invalid length %u in record %u of %s btree block %u/%u\n"),
+ 					len, i, name, agno, bno);
+@@ -914,6 +914,16 @@ rmap_in_order(
+ 	return offset > lastoffset;
+ }
+ 
++static inline bool
++verify_rmap_agbno(
++	struct xfs_mount	*mp,
++	xfs_agnumber_t		agno,
++	xfs_agblock_t		agbno)
++{
++	return agbno < libxfs_ag_block_count(mp, agno);
++}
++
++
+ static void
+ scan_rmapbt(
+ 	struct xfs_btree_block	*block,
+@@ -1031,14 +1041,14 @@ _("%s rmap btree block claimed (state %d
+ 			end = key.rm_startblock + key.rm_blockcount;
+ 
+ 			/* Make sure agbno & len make sense. */
+-			if (!verify_agbno(mp, agno, b)) {
++			if (!verify_rmap_agbno(mp, agno, b)) {
+ 				do_warn(
+ 	_("invalid start block %u in record %u of %s btree block %u/%u\n"),
+ 					b, i, name, agno, bno);
+ 				continue;
+ 			}
+ 			if (len == 0 || end <= b ||
+-			    !verify_agbno(mp, agno, end - 1)) {
++			    !verify_rmap_agbno(mp, agno, end - 1)) {
+ 				do_warn(
+ 	_("invalid length %u in record %u of %s btree block %u/%u\n"),
+ 					len, i, name, agno, bno);
+@@ -1325,14 +1335,14 @@ _("leftover CoW extent has invalid start
+ 			}
+ 			end = agb + len;
+ 
+-			if (!verify_agbno(mp, agno, agb)) {
++			if (!libxfs_verify_agbno(mp, agno, agb)) {
+ 				do_warn(
+ 	_("invalid start block %u in record %u of %s btree block %u/%u\n"),
+ 					b, i, name, agno, bno);
+ 				continue;
+ 			}
+ 			if (len == 0 || end <= agb ||
+-			    !verify_agbno(mp, agno, end - 1)) {
++			    !libxfs_verify_agbno(mp, agno, end - 1)) {
+ 				do_warn(
+ 	_("invalid length %u in record %u of %s btree block %u/%u\n"),
+ 					len, i, name, agno, bno);
+@@ -2145,7 +2155,7 @@ scan_agfl(
+ {
+ 	struct agfl_state	*as = priv;
+ 
+-	if (verify_agbno(mp, as->agno, bno))
++	if (libxfs_verify_agbno(mp, as->agno, bno))
+ 		set_bmap(as->agno, bno, XR_E_FREE);
+ 	else
+ 		do_warn(_("bad agbno %u in agfl, agno %d\n"),
+@@ -2217,7 +2227,7 @@ validate_agf(
+ 	uint32_t		magic;
+ 
+ 	bno = be32_to_cpu(agf->agf_roots[XFS_BTNUM_BNO]);
+-	if (bno != 0 && verify_agbno(mp, agno, bno)) {
++	if (libxfs_verify_agbno(mp, agno, bno)) {
+ 		magic = xfs_sb_version_hascrc(&mp->m_sb) ? XFS_ABTB_CRC_MAGIC
+ 							 : XFS_ABTB_MAGIC;
+ 		scan_sbtree(bno, be32_to_cpu(agf->agf_levels[XFS_BTNUM_BNO]),
+@@ -2229,7 +2239,7 @@ validate_agf(
+ 	}
+ 
+ 	bno = be32_to_cpu(agf->agf_roots[XFS_BTNUM_CNT]);
+-	if (bno != 0 && verify_agbno(mp, agno, bno)) {
++	if (libxfs_verify_agbno(mp, agno, bno)) {
+ 		magic = xfs_sb_version_hascrc(&mp->m_sb) ? XFS_ABTC_CRC_MAGIC
+ 							 : XFS_ABTC_MAGIC;
+ 		scan_sbtree(bno, be32_to_cpu(agf->agf_levels[XFS_BTNUM_CNT]),
+@@ -2249,7 +2259,7 @@ validate_agf(
+ 		priv.last_rec.rm_owner = XFS_RMAP_OWN_UNKNOWN;
+ 		priv.nr_blocks = 0;
+ 		bno = be32_to_cpu(agf->agf_roots[XFS_BTNUM_RMAP]);
+-		if (bno != 0 && verify_agbno(mp, agno, bno)) {
++		if (libxfs_verify_agbno(mp, agno, bno)) {
+ 			scan_sbtree(bno,
+ 				    be32_to_cpu(agf->agf_levels[XFS_BTNUM_RMAP]),
+ 				    agno, 0, scan_rmapbt, 1, XFS_RMAP_CRC_MAGIC,
+@@ -2267,7 +2277,7 @@ validate_agf(
+ 
+ 	if (xfs_sb_version_hasreflink(&mp->m_sb)) {
+ 		bno = be32_to_cpu(agf->agf_refcount_root);
+-		if (bno != 0 && verify_agbno(mp, agno, bno)) {
++		if (libxfs_verify_agbno(mp, agno, bno)) {
+ 			struct refc_priv	priv;
+ 
+ 			memset(&priv, 0, sizeof(priv));
+@@ -2315,7 +2325,7 @@ validate_agi(
+ 	uint32_t		magic;
+ 
+ 	bno = be32_to_cpu(agi->agi_root);
+-	if (bno != 0 && verify_agbno(mp, agno, bno)) {
++	if (libxfs_verify_agbno(mp, agno, bno)) {
+ 		magic = xfs_sb_version_hascrc(&mp->m_sb) ? XFS_IBT_CRC_MAGIC
+ 							 : XFS_IBT_MAGIC;
+ 		scan_sbtree(bno, be32_to_cpu(agi->agi_level),
+@@ -2328,7 +2338,7 @@ validate_agi(
+ 
+ 	if (xfs_sb_version_hasfinobt(&mp->m_sb)) {
+ 		bno = be32_to_cpu(agi->agi_free_root);
+-		if (bno != 0 && verify_agbno(mp, agno, bno)) {
++		if (libxfs_verify_agbno(mp, agno, bno)) {
+ 			magic = xfs_sb_version_hascrc(&mp->m_sb) ?
+ 					XFS_FIBT_CRC_MAGIC : XFS_FIBT_MAGIC;
+ 			scan_sbtree(bno, be32_to_cpu(agi->agi_free_level),

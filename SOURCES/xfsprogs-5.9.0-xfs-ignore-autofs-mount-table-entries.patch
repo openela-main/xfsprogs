@@ -1,0 +1,78 @@
+From 5ca4d781d36946de197ed2d4196c84c8f6b4522f Mon Sep 17 00:00:00 2001
+From: Ian Kent <raven@themaw.net>
+Date: Mon, 12 Oct 2020 15:40:01 -0400
+Subject: [PATCH] xfsprogs: ignore autofs mount table entries
+
+Some of the xfsprogs utilities read the mount table via. getmntent(3).
+
+The mount table may contain (almost always these days since /etc/mtab is
+symlinked to /proc/self/mounts) autofs mount entries. During processing
+of the mount table entries statfs(2) can be called on mount point paths
+which will trigger an automount if those entries are direct or offset
+autofs mount triggers (indirect autofs mounts aren't affected).
+
+This can be a problem when there are a lot of autofs direct or offset
+mounts because real mounts will be triggered when statfs(2) is called.
+This can be particularly bad if the triggered mounts are NFS mounts and
+the server is unavailable leading to lengthy boot times or worse.
+
+Simply ignoring autofs mount entries during getmentent(3) traversals
+avoids the statfs() call that triggers these mounts. If there are
+automounted mounts (real mounts) at the time of reading the mount table
+these will still be seen in the list so they will be included if that
+actually matters to the reader.
+
+Recent glibc getmntent(3) can ignore autofs mounts but that requires the
+autofs user to configure autofs to use the "ignore" pseudo mount option
+for autofs mounts. But this isn't yet the autofs default (to prevent
+unexpected side effects) so that can't be used.
+
+The autofs direct and offset automount triggers are pseudo file system
+mounts and are more or less useless in terms on file system information
+so excluding them doesn't sacrifice useful file system information
+either.
+
+Consequently excluding autofs mounts shouldn't have any adverse side
+effects.
+
+Changes since v1:
+- drop hunk from fsr/xfs_fsr.c.
+
+Signed-off-by: Ian Kent <raven@themaw.net>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ libfrog/linux.c | 2 ++
+ libfrog/paths.c | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/libfrog/linux.c b/libfrog/linux.c
+index 40a839d1..a45d99ab 100644
+--- a/libfrog/linux.c
++++ b/libfrog/linux.c
+@@ -73,6 +73,8 @@ platform_check_mount(char *name, char *block, struct stat *s, int flags)
+ 	 * servers.  So first, a simple check: does the "dev" start with "/" ?
+ 	 */
+ 	while ((mnt = getmntent(f)) != NULL) {
++		if (!strcmp(mnt->mnt_type, "autofs"))
++			continue;
+ 		if (mnt->mnt_fsname[0] != '/')
+ 			continue;
+ 		if (stat(mnt->mnt_dir, &mst) < 0)
+diff --git a/libfrog/paths.c b/libfrog/paths.c
+index 32737223..d6793764 100644
+--- a/libfrog/paths.c
++++ b/libfrog/paths.c
+@@ -389,6 +389,8 @@ fs_table_initialise_mounts(
+ 			return errno;
+ 
+ 	while ((mnt = getmntent(mtp)) != NULL) {
++		if (!strcmp(mnt->mnt_type, "autofs"))
++			continue;
+ 		if (!realpath(mnt->mnt_dir, rmnt_dir))
+ 			continue;
+ 		if (!realpath(mnt->mnt_fsname, rmnt_fsname))
+-- 
+2.40.1
+

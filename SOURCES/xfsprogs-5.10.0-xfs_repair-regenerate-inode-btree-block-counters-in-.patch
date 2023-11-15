@@ -1,0 +1,29 @@
+From 086250dc5707ee6fcfb1ee8499e7af092904a7a6 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 20 Nov 2020 17:03:27 -0500
+Subject: [PATCH] xfs_repair: regenerate inode btree block counters in AGI
+
+Reset both inode btree block counters in the AGI when rebuilding the
+metadata indexes.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Brian Foster <bfoster@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/repair/phase5.c b/repair/phase5.c
+index ad9394d..a37d672 100644
+--- a/repair/phase5.c
++++ b/repair/phase5.c
+@@ -1126,6 +1126,11 @@ build_agi(xfs_mount_t *mp, xfs_agnumber_t agno, bt_status_t *btree_curs,
+ 		agi->agi_free_level = cpu_to_be32(finobt_curs->num_levels);
+ 	}
+ 
++	if (xfs_sb_version_hasinobtcounts(&mp->m_sb)) {
++		agi->agi_iblocks = cpu_to_be32(btree_curs->num_tot_blocks);
++		agi->agi_fblocks = cpu_to_be32(finobt_curs->num_tot_blocks);
++	}
++
+ 	libxfs_writebuf(agi_buf, 0);
+ }
+ 

@@ -1,0 +1,32 @@
+From cac80700d88a32c1835cb37f982e98ddd73021e5 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 20 Nov 2020 17:03:28 -0500
+Subject: [PATCH] xfs: enable big timestamps
+
+Source kernel commit: 29887a22713192509cfc6068ea3b200cdb8856da
+
+Enable the big timestamp feature.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Reviewed-by: Allison Collins <allison.henderson@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Gao Xiang <hsiangkao@redhat.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_format.h b/libxfs/xfs_format.h
+index 4848de8..722c9de 100644
+--- a/libxfs/xfs_format.h
++++ b/libxfs/xfs_format.h
+@@ -471,7 +471,8 @@ xfs_sb_has_ro_compat_feature(
+ #define XFS_SB_FEAT_INCOMPAT_ALL \
+ 		(XFS_SB_FEAT_INCOMPAT_FTYPE|	\
+ 		 XFS_SB_FEAT_INCOMPAT_SPINODES|	\
+-		 XFS_SB_FEAT_INCOMPAT_META_UUID)
++		 XFS_SB_FEAT_INCOMPAT_META_UUID| \
++		 XFS_SB_FEAT_INCOMPAT_BIGTIME)
+ 
+ #define XFS_SB_FEAT_INCOMPAT_UNKNOWN	~XFS_SB_FEAT_INCOMPAT_ALL
+ static inline bool

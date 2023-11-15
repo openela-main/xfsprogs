@@ -1,0 +1,28 @@
+From 46da703382fa31bb02049a4131602f8a40002dbb Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 20 Nov 2020 17:03:27 -0500
+Subject: [PATCH] xfs: enable new inode btree counters feature
+
+Source kernel commit: b896a39faa5a2f97dadfb347928466afb12cc63a
+
+Enable the new inode btree counters feature.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Brian Foster <bfoster@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_format.h b/libxfs/xfs_format.h
+index 9ba65e5..4848de8 100644
+--- a/libxfs/xfs_format.h
++++ b/libxfs/xfs_format.h
+@@ -453,7 +453,8 @@ xfs_sb_has_compat_feature(
+ #define XFS_SB_FEAT_RO_COMPAT_ALL \
+ 		(XFS_SB_FEAT_RO_COMPAT_FINOBT | \
+ 		 XFS_SB_FEAT_RO_COMPAT_RMAPBT | \
+-		 XFS_SB_FEAT_RO_COMPAT_REFLINK)
++		 XFS_SB_FEAT_RO_COMPAT_REFLINK| \
++		 XFS_SB_FEAT_RO_COMPAT_INOBTCNT)
+ #define XFS_SB_FEAT_RO_COMPAT_UNKNOWN	~XFS_SB_FEAT_RO_COMPAT_ALL
+ static inline bool
+ xfs_sb_has_ro_compat_feature(

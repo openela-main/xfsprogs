@@ -1,0 +1,196 @@
+From a252aadfc977473e0851acf0d529c930c6e8e181 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Tue, 10 Nov 2020 16:29:40 -0500
+Subject: [PATCH] xfs: redefine xfs_timestamp_t
+
+Source kernel commit: 5a0bb066f60fa02f453d7721844eae59f505c06e
+
+Redefine xfs_timestamp_t as a __be64 typedef in preparation for the
+bigtime functionality.  Preserve the legacy structure format so that we
+can let the compiler take care of masking and shifting.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Gao Xiang <hsiangkao@redhat.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/db/field.c b/db/field.c
+index 66fa37e..4a45c66 100644
+--- a/db/field.c
++++ b/db/field.c
+@@ -350,7 +350,7 @@ const ftattr_t	ftattrtab[] = {
+ 	{ FLDT_TIME, "time", fp_time, NULL, SI(bitsz(int32_t)), FTARG_SIGNED,
+ 	  NULL, NULL },
+ 	{ FLDT_TIMESTAMP, "timestamp", NULL, (char *)timestamp_flds,
+-	  SI(bitsz(xfs_timestamp_t)), 0, NULL, timestamp_flds },
++	  SI(bitsz(struct xfs_legacy_timestamp)), 0, NULL, timestamp_flds },
+ 	{ FLDT_UINT1, "uint1", fp_num, "%u", SI(1), 0, NULL, NULL },
+ 	{ FLDT_UINT16D, "uint16d", fp_num, "%u", SI(bitsz(uint16_t)), 0, NULL,
+ 	  NULL },
+diff --git a/db/inode.c b/db/inode.c
+index 697f7fe..b308538 100644
+--- a/db/inode.c
++++ b/db/inode.c
+@@ -176,7 +176,7 @@ const field_t	inode_v3_flds[] = {
+ };
+ 
+ 
+-#define	TOFF(f)	bitize(offsetof(xfs_timestamp_t, t_ ## f))
++#define	TOFF(f)	bitize(offsetof(struct xfs_legacy_timestamp, t_ ## f))
+ const field_t	timestamp_flds[] = {
+ 	{ "sec", FLDT_TIME, OI(TOFF(sec)), C1, 0, TYP_NONE },
+ 	{ "nsec", FLDT_NSEC, OI(TOFF(nsec)), C1, 0, TYP_NONE },
+diff --git a/libxfs/xfs_format.h b/libxfs/xfs_format.h
+index 8858341..371f5cd 100644
+--- a/libxfs/xfs_format.h
++++ b/libxfs/xfs_format.h
+@@ -847,12 +847,16 @@ typedef struct xfs_agfl {
+  * seconds and nanoseconds; time zero is the Unix epoch, Jan  1 00:00:00 UTC
+  * 1970, which means that the timestamp epoch is the same as the Unix epoch.
+  * Therefore, the ondisk min and max defined here can be used directly to
+- * constrain the incore timestamps on a Unix system.
++ * constrain the incore timestamps on a Unix system.  Note that we actually
++ * encode a __be64 value on disk.
+  */
+-typedef struct xfs_timestamp {
++typedef __be64 xfs_timestamp_t;
++
++/* Legacy timestamp encoding format. */
++struct xfs_legacy_timestamp {
+ 	__be32		t_sec;		/* timestamp seconds */
+ 	__be32		t_nsec;		/* timestamp nanoseconds */
+-} xfs_timestamp_t;
++};
+ 
+ /*
+  * Smallest possible ondisk seconds value with traditional timestamps.  This
+diff --git a/libxfs/xfs_inode_buf.c b/libxfs/xfs_inode_buf.c
+index f80ce10..d8831a1 100644
+--- a/libxfs/xfs_inode_buf.c
++++ b/libxfs/xfs_inode_buf.c
+@@ -195,6 +195,21 @@ xfs_imap_to_bp(
+ 	return 0;
+ }
+ 
++/* Convert an ondisk timestamp to an incore timestamp. */
++struct timespec64
++xfs_inode_from_disk_ts(
++	const xfs_timestamp_t		ts)
++{
++	struct timespec64		tv;
++	struct xfs_legacy_timestamp	*lts;
++
++	lts = (struct xfs_legacy_timestamp *)&ts;
++	tv.tv_sec = (int)be32_to_cpu(lts->t_sec);
++	tv.tv_nsec = (int)be32_to_cpu(lts->t_nsec);
++
++	return tv;
++}
++
+ void
+ xfs_inode_from_disk(
+ 	struct xfs_inode	*ip,
+@@ -231,12 +246,10 @@ xfs_inode_from_disk(
+ 	 * a time before epoch is converted to a time long after epoch
+ 	 * on 64 bit systems.
+ 	 */
+-	inode->i_atime.tv_sec = (int)be32_to_cpu(from->di_atime.t_sec);
+-	inode->i_atime.tv_nsec = (int)be32_to_cpu(from->di_atime.t_nsec);
+-	inode->i_mtime.tv_sec = (int)be32_to_cpu(from->di_mtime.t_sec);
+-	inode->i_mtime.tv_nsec = (int)be32_to_cpu(from->di_mtime.t_nsec);
+-	inode->i_ctime.tv_sec = (int)be32_to_cpu(from->di_ctime.t_sec);
+-	inode->i_ctime.tv_nsec = (int)be32_to_cpu(from->di_ctime.t_nsec);
++	inode->i_atime = xfs_inode_from_disk_ts(from->di_atime);
++	inode->i_mtime = xfs_inode_from_disk_ts(from->di_mtime);
++	inode->i_ctime = xfs_inode_from_disk_ts(from->di_ctime);
++
+ 	inode->i_generation = be32_to_cpu(from->di_gen);
+ 	inode->i_mode = be16_to_cpu(from->di_mode);
+ 
+@@ -254,13 +267,27 @@ xfs_inode_from_disk(
+ 	if (to->di_version == 3) {
+ 		inode_set_iversion_queried(inode,
+ 					   be64_to_cpu(from->di_changecount));
+-		to->di_crtime.tv_sec = be32_to_cpu(from->di_crtime.t_sec);
+-		to->di_crtime.tv_nsec = be32_to_cpu(from->di_crtime.t_nsec);
++		to->di_crtime = xfs_inode_from_disk_ts(from->di_crtime);
+ 		to->di_flags2 = be64_to_cpu(from->di_flags2);
+ 		to->di_cowextsize = be32_to_cpu(from->di_cowextsize);
+ 	}
+ }
+ 
++/* Convert an incore timestamp to an ondisk timestamp. */
++static inline xfs_timestamp_t
++xfs_inode_to_disk_ts(
++	const struct timespec64		tv)
++{
++	struct xfs_legacy_timestamp	*lts;
++	xfs_timestamp_t			ts;
++
++	lts = (struct xfs_legacy_timestamp *)&ts;
++	lts->t_sec = cpu_to_be32(tv.tv_sec);
++	lts->t_nsec = cpu_to_be32(tv.tv_nsec);
++
++	return ts;
++}
++
+ void
+ xfs_inode_to_disk(
+ 	struct xfs_inode	*ip,
+@@ -281,12 +308,9 @@ xfs_inode_to_disk(
+ 	to->di_projid_hi = cpu_to_be16(from->di_projid_hi);
+ 
+ 	memset(to->di_pad, 0, sizeof(to->di_pad));
+-	to->di_atime.t_sec = cpu_to_be32(inode->i_atime.tv_sec);
+-	to->di_atime.t_nsec = cpu_to_be32(inode->i_atime.tv_nsec);
+-	to->di_mtime.t_sec = cpu_to_be32(inode->i_mtime.tv_sec);
+-	to->di_mtime.t_nsec = cpu_to_be32(inode->i_mtime.tv_nsec);
+-	to->di_ctime.t_sec = cpu_to_be32(inode->i_ctime.tv_sec);
+-	to->di_ctime.t_nsec = cpu_to_be32(inode->i_ctime.tv_nsec);
++	to->di_atime = xfs_inode_to_disk_ts(inode->i_atime);
++	to->di_mtime = xfs_inode_to_disk_ts(inode->i_mtime);
++	to->di_ctime = xfs_inode_to_disk_ts(inode->i_ctime);
+ 	to->di_nlink = cpu_to_be32(inode->i_nlink);
+ 	to->di_gen = cpu_to_be32(inode->i_generation);
+ 	to->di_mode = cpu_to_be16(inode->i_mode);
+@@ -304,8 +328,7 @@ xfs_inode_to_disk(
+ 
+ 	if (from->di_version == 3) {
+ 		to->di_changecount = cpu_to_be64(inode_peek_iversion(inode));
+-		to->di_crtime.t_sec = cpu_to_be32(from->di_crtime.tv_sec);
+-		to->di_crtime.t_nsec = cpu_to_be32(from->di_crtime.tv_nsec);
++		to->di_crtime = xfs_inode_to_disk_ts(from->di_crtime);
+ 		to->di_flags2 = cpu_to_be64(from->di_flags2);
+ 		to->di_cowextsize = cpu_to_be32(from->di_cowextsize);
+ 		to->di_ino = cpu_to_be64(ip->i_ino);
+diff --git a/libxfs/xfs_inode_buf.h b/libxfs/xfs_inode_buf.h
+index 0343368..6147f42 100644
+--- a/libxfs/xfs_inode_buf.h
++++ b/libxfs/xfs_inode_buf.h
+@@ -76,4 +76,6 @@ xfs_failaddr_t xfs_inode_validate_cowextsize(struct xfs_mount *mp,
+ 		uint32_t cowextsize, uint16_t mode, uint16_t flags,
+ 		uint64_t flags2);
+ 
++struct timespec64 xfs_inode_from_disk_ts(const xfs_timestamp_t ts);
++
+ #endif	/* __XFS_INODE_BUF_H__ */
+diff --git a/repair/dinode.c b/repair/dinode.c
+index 8fa5f88..0c40f2a 100644
+--- a/repair/dinode.c
++++ b/repair/dinode.c
+@@ -2213,9 +2213,12 @@ static void
+ check_nsec(
+ 	const char		*name,
+ 	xfs_ino_t		lino,
+-	struct xfs_timestamp	*t,
++	xfs_timestamp_t		*ts,
+ 	int			*dirty)
+ {
++	struct xfs_legacy_timestamp *t;
++
++	t = (struct xfs_legacy_timestamp *)ts;
+ 	if (be32_to_cpu(t->t_nsec) < NSEC_PER_SEC)
+ 		return;
+ 

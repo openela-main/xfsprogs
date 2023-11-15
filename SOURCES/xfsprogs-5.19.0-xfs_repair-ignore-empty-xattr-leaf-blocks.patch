@@ -1,0 +1,56 @@
+From f50d3462c654acc484ab3ea68e75e8252b77e262 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Wed, 13 Jul 2022 20:58:25 -0500
+Subject: [PATCH] xfs_repair: ignore empty xattr leaf blocks
+
+As detailed in the commit:
+
+5e572d1a xfs: empty xattr leaf header blocks are not corruption
+
+empty xattr leaf blocks can be the benign byproduct of the system
+going down during the multi-step process of adding a large xattr
+to a file that has no xattrs.  If we find one at attr fork offset 0,
+we should clear it, but this isn't a corruption.
+
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ repair/attr_repair.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/repair/attr_repair.c b/repair/attr_repair.c
+index 2055d96e..c3a6d502 100644
+--- a/repair/attr_repair.c
++++ b/repair/attr_repair.c
+@@ -579,6 +579,26 @@ process_leaf_attr_block(
+ 	firstb = mp->m_sb.sb_blocksize;
+ 	stop = xfs_attr3_leaf_hdr_size(leaf);
+ 
++	/*
++	 * Empty leaf blocks at offset zero can occur as a race between
++	 * setxattr and the system going down, so we only take action if we're
++	 * running in modify mode.  See xfs_attr3_leaf_verify for details of
++	 * how we've screwed this up many times.
++	 */
++	if (!leafhdr.count && da_bno == 0) {
++		if (no_modify) {
++			do_log(
++	_("would clear empty leaf attr block 0, inode %" PRIu64 "\n"),
++					ino);
++			return 0;
++		}
++
++		do_warn(
++	_("will clear empty leaf attr block 0, inode %" PRIu64 "\n"),
++				ino);
++		return 1;
++	}
++
+ 	/* does the count look sorta valid? */
+ 	if (!leafhdr.count ||
+ 	    leafhdr.count * sizeof(xfs_attr_leaf_entry_t) + stop >
+-- 
+2.40.1
+
