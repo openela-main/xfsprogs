@@ -1,0 +1,53 @@
+From dcad5c60c59bfcdf4e27dc552b94591eced0a452 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Thu, 15 Apr 2021 15:44:10 -0400
+Subject: [PATCH] libfrog: report inobtcount in geometry
+
+Report the inode btree counter feature in fs feature reports.
+
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ libfrog/fsgeom.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/libfrog/fsgeom.c b/libfrog/fsgeom.c
+index 14507668..4f1a1842 100644
+--- a/libfrog/fsgeom.c
++++ b/libfrog/fsgeom.c
+@@ -29,6 +29,7 @@ xfs_report_geom(
+ 	int			rmapbt_enabled;
+ 	int			reflink_enabled;
+ 	int			bigtime_enabled;
++	int			inobtcount;
+ 
+ 	isint = geo->logstart > 0;
+ 	lazycount = geo->flags & XFS_FSOP_GEOM_FLAGS_LAZYSB ? 1 : 0;
+@@ -45,12 +46,13 @@ xfs_report_geom(
+ 	rmapbt_enabled = geo->flags & XFS_FSOP_GEOM_FLAGS_RMAPBT ? 1 : 0;
+ 	reflink_enabled = geo->flags & XFS_FSOP_GEOM_FLAGS_REFLINK ? 1 : 0;
+ 	bigtime_enabled = geo->flags & XFS_FSOP_GEOM_FLAGS_BIGTIME ? 1 : 0;
++	inobtcount = geo->flags & XFS_FSOP_GEOM_FLAGS_INOBTCNT ? 1 : 0;
+ 
+ 	printf(_(
+ "meta-data=%-22s isize=%-6d agcount=%u, agsize=%u blks\n"
+ "         =%-22s sectsz=%-5u attr=%u, projid32bit=%u\n"
+ "         =%-22s crc=%-8u finobt=%u, sparse=%u, rmapbt=%u\n"
+-"         =%-22s reflink=%-4u bigtime=%u\n"
++"         =%-22s reflink=%-4u bigtime=%u inobtcount=%u\n"
+ "data     =%-22s bsize=%-6u blocks=%llu, imaxpct=%u\n"
+ "         =%-22s sunit=%-6u swidth=%u blks\n"
+ "naming   =version %-14u bsize=%-6u ascii-ci=%d, ftype=%d\n"
+@@ -60,7 +62,7 @@ xfs_report_geom(
+ 		mntpoint, geo->inodesize, geo->agcount, geo->agblocks,
+ 		"", geo->sectsize, attrversion, projid32bit,
+ 		"", crcs_enabled, finobt_enabled, spinodes, rmapbt_enabled,
+-		"", reflink_enabled, bigtime_enabled,
++		"", reflink_enabled, bigtime_enabled, inobtcount,
+ 		"", geo->blocksize, (unsigned long long)geo->datablocks,
+ 			geo->imaxpct,
+ 		"", geo->sunit, geo->swidth,
+-- 
+2.27.0
+

@@ -1,0 +1,112 @@
+From 9d6023a856a1c4f84415dff59b0d5459cc8768db Mon Sep 17 00:00:00 2001
+From: Eric Sandeen <sandeen@redhat.com>
+Date: Thu, 27 Feb 2020 15:05:48 -0500
+Subject: [PATCH] libxfs: use FALLOC_FL_ZERO_RANGE in libxfs_device_zero
+
+I had a request from someone who cared about mkfs speed over
+a slower network block device to look into using faster zeroing
+methods, particularly for the log, during mkfs.
+
+Using FALLOC_FL_ZERO_RANGE is faster in this case than writing
+a bunch of zeros across a wire.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ include/builddefs.in |  3 +++
+ include/linux.h      | 22 ++++++++++++++++++++++
+ libxfs/rdwr.c        | 15 +++++++++++----
+ 3 files changed, 36 insertions(+), 4 deletions(-)
+
+diff --git a/include/builddefs.in b/include/builddefs.in
+index 4700b52..1dd27f7 100644
+--- a/include/builddefs.in
++++ b/include/builddefs.in
+@@ -144,6 +144,9 @@ endif
+ ifeq ($(HAVE_GETFSMAP),yes)
+ PCFLAGS+= -DHAVE_GETFSMAP
+ endif
++ifeq ($(HAVE_FALLOCATE),yes)
++PCFLAGS += -DHAVE_FALLOCATE
++endif
+ 
+ LIBICU_LIBS = @libicu_LIBS@
+ LIBICU_CFLAGS = @libicu_CFLAGS@
+diff --git a/include/linux.h b/include/linux.h
+index 8f3c32b..57726bb 100644
+--- a/include/linux.h
++++ b/include/linux.h
+@@ -20,6 +20,10 @@
+ #include <stdio.h>
+ #include <asm/types.h>
+ #include <mntent.h>
++#include <fcntl.h>
++#if defined(HAVE_FALLOCATE)
++#include <linux/falloc.h>
++#endif
+ #ifdef OVERRIDE_SYSTEM_FSXATTR
+ # define fsxattr sys_fsxattr
+ #endif
+@@ -164,6 +168,24 @@ static inline void platform_mntent_close(struct mntent_cursor * cursor)
+ 	endmntent(cursor->mtabp);
+ }
+ 
++#if defined(FALLOC_FL_ZERO_RANGE)
++static inline int
++platform_zero_range(
++	int		fd,
++	xfs_off_t	start,
++	size_t		len)
++{
++	int ret;
++
++	ret = fallocate(fd, FALLOC_FL_ZERO_RANGE, start, len);
++	if (!ret)
++		return 0;
++	return -errno;
++}
++#else
++#define platform_zero_range(fd, s, l)	(-EOPNOTSUPP)
++#endif
++
+ /*
+  * Check whether we have to define FS_IOC_FS[GS]ETXATTR ourselves. These
+  * are a copy of the definitions moved to linux/uapi/fs.h in the 4.5 kernel,
+diff --git a/libxfs/rdwr.c b/libxfs/rdwr.c
+index 0d9d720..e2d9d79 100644
+--- a/libxfs/rdwr.c
++++ b/libxfs/rdwr.c
+@@ -61,8 +61,18 @@ libxfs_device_zero(struct xfs_buftarg *btp, xfs_daddr_t start, uint len)
+ {
+ 	xfs_off_t	start_offset, end_offset, offset;
+ 	ssize_t		zsize, bytes;
++	size_t		len_bytes;
+ 	char		*z;
+-	int		fd;
++	int		error, fd;
++
++	fd = libxfs_device_to_fd(btp->dev);
++	start_offset = LIBXFS_BBTOOFF64(start);
++
++	/* try to use special zeroing methods, fall back to writes if needed */
++	len_bytes = LIBXFS_BBTOOFF64(len);
++	error = platform_zero_range(fd, start_offset, len_bytes);
++	if (!error)
++		return 0;
+ 
+ 	zsize = min(BDSTRAT_SIZE, BBTOB(len));
+ 	if ((z = memalign(libxfs_device_alignment(), zsize)) == NULL) {
+@@ -73,9 +83,6 @@ libxfs_device_zero(struct xfs_buftarg *btp, xfs_daddr_t start, uint len)
+ 	}
+ 	memset(z, 0, zsize);
+ 
+-	fd = libxfs_device_to_fd(btp->dev);
+-	start_offset = LIBXFS_BBTOOFF64(start);
+-
+ 	if ((lseek(fd, start_offset, SEEK_SET)) < 0) {
+ 		fprintf(stderr, _("%s: %s seek to offset %llu failed: %s\n"),
+ 			progname, __FUNCTION__,
+-- 
+2.9.5
+

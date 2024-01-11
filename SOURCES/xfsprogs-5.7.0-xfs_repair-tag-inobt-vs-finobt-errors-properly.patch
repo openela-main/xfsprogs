@@ -1,0 +1,88 @@
+From 08280b4b6efd317c673c6718a27d77e702d0480d Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 10 Jul 2020 15:35:45 -0400
+Subject: [PATCH] xfs_repair: tag inobt vs finobt errors properly
+
+Amend the generic inode btree block scanner function to tag correctly
+which tree it's complaining about.  Previously, dubious finobt headers
+would be attributed to the "inode btree", which is at best ambiguous
+and misleading at worst.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ repair/scan.c | 36 ++++++++++++++++++++++++++----------
+ 1 file changed, 26 insertions(+), 10 deletions(-)
+
+Index: xfsprogs-5.0.0/repair/scan.c
+===================================================================
+--- xfsprogs-5.0.0.orig/repair/scan.c
++++ xfsprogs-5.0.0/repair/scan.c
+@@ -1934,6 +1934,7 @@ scan_inobt(
+ 	const struct xfs_buf_ops *ops)
+ {
+ 	struct aghdr_cnts	*agcnts = priv;
++	char			*name;
+ 	int			i;
+ 	int			numrecs;
+ 	int			state;
+@@ -1944,17 +1945,32 @@ scan_inobt(
+ 
+ 	hdr_errors = 0;
+ 
++	switch (magic) {
++	case XFS_FIBT_MAGIC:
++	case XFS_FIBT_CRC_MAGIC:
++		name = "fino";
++		break;
++	case XFS_IBT_MAGIC:
++	case XFS_IBT_CRC_MAGIC:
++		name = "ino";
++		break;
++	default:
++		name = "(unknown)";
++		assert(0);
++		break;
++	}
++
+ 	if (be32_to_cpu(block->bb_magic) != magic) {
+-		do_warn(_("bad magic # %#x in inobt block %d/%d\n"),
+-			be32_to_cpu(block->bb_magic), agno, bno);
++		do_warn(_("bad magic # %#x in %sbt block %d/%d\n"),
++			be32_to_cpu(block->bb_magic), name, agno, bno);
+ 		hdr_errors++;
+ 		bad_ino_btree = 1;
+ 		if (suspect)
+ 			return;
+ 	}
+ 	if (be16_to_cpu(block->bb_level) != level) {
+-		do_warn(_("expected level %d got %d in inobt block %d/%d\n"),
+-			level, be16_to_cpu(block->bb_level), agno, bno);
++		do_warn(_("expected level %d got %d in %sbt block %d/%d\n"),
++			level, be16_to_cpu(block->bb_level), name, agno, bno);
+ 		hdr_errors++;
+ 		bad_ino_btree = 1;
+ 		if (suspect)
+@@ -1976,8 +1992,8 @@ scan_inobt(
+ 	default:
+ 		set_bmap(agno, bno, XR_E_MULT);
+ 		do_warn(
+-_("inode btree block claimed (state %d), agno %d, bno %d, suspect %d\n"),
+-			state, agno, bno, suspect);
++_("%sbt btree block claimed (state %d), agno %d, bno %d, suspect %d\n"),
++			name, state, agno, bno, suspect);
+ 	}
+ 
+ 	numrecs = be16_to_cpu(block->bb_numrecs);
+@@ -1999,8 +2015,8 @@ _("inode btree block claimed (state %d),
+ 
+ 		if (hdr_errors)  {
+ 			bad_ino_btree = 1;
+-			do_warn(_("dubious inode btree block header %d/%d\n"),
+-				agno, bno);
++			do_warn(_("dubious %sbt btree block header %d/%d\n"),
++				name, agno, bno);
+ 			suspect++;
+ 		}
+ 

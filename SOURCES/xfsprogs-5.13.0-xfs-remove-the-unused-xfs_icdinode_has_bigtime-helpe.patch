@@ -1,0 +1,29 @@
+From 5b9782c9317b7ac0ff942dffb667bad8502f0932 Mon Sep 17 00:00:00 2001
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 30 Jun 2021 18:29:41 -0400
+Subject: [PATCH] xfs: remove the unused xfs_icdinode_has_bigtime helper
+
+Source kernel commit: 55f773380e922d3b975a7acb24331c76611cce30
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_inode_buf.h b/libxfs/xfs_inode_buf.h
+index 2b91e60..8d6737b 100644
+--- a/libxfs/xfs_inode_buf.h
++++ b/libxfs/xfs_inode_buf.h
+@@ -40,11 +40,6 @@ struct xfs_icdinode {
+ 	struct timespec64 di_crtime;	/* time created */
+ };
+ 
+-static inline bool xfs_icdinode_has_bigtime(const struct xfs_icdinode *icd)
+-{
+-	return icd->di_flags2 & XFS_DIFLAG2_BIGTIME;
+-}
+-
+ /*
+  * Inode location information.  Stored in the inode and passed to
+  * xfs_imap_to_bp() to get a buffer and dinode for a given inode.

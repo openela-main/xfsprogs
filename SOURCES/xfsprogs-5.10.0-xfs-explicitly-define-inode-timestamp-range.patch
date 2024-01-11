@@ -1,0 +1,74 @@
+From 18e3b8c234fac67c6c96e9ff34f0ab4598220fa1 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Tue, 10 Nov 2020 15:11:09 -0500
+Subject: [PATCH] xfs: explicitly define inode timestamp range
+
+Source kernel commit: 876fdc7c4f366a709ac272ef3336ae7dce58f2af
+
+Formally define the inode timestamp ranges that existing filesystems
+support, and switch the vfs timetamp ranges to use it.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Allison Collins <allison.henderson@oracle.com>
+Reviewed-by: Gao Xiang <hsiangkao@redhat.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+NOTE: we hvae no xfs_compat.h so S32_MAX etc went in xfs_fs.h
+
+diff --git a/libxfs/xfs_format.h b/libxfs/xfs_format.h
+index 7f7b03a..5712aa0 100644
+--- a/libxfs/xfs_format.h
++++ b/libxfs/xfs_format.h
+@@ -839,11 +839,33 @@ typedef struct xfs_agfl {
+ 	    ASSERT(xfs_daddr_to_agno(mp, d) == \
+ 		   xfs_daddr_to_agno(mp, (d) + (len) - 1)))
+ 
++/*
++ * XFS Timestamps
++ * ==============
++ *
++ * Traditional ondisk inode timestamps consist of signed 32-bit counters for
++ * seconds and nanoseconds; time zero is the Unix epoch, Jan  1 00:00:00 UTC
++ * 1970, which means that the timestamp epoch is the same as the Unix epoch.
++ * Therefore, the ondisk min and max defined here can be used directly to
++ * constrain the incore timestamps on a Unix system.
++ */
+ typedef struct xfs_timestamp {
+ 	__be32		t_sec;		/* timestamp seconds */
+ 	__be32		t_nsec;		/* timestamp nanoseconds */
+ } xfs_timestamp_t;
+ 
++/*
++ * Smallest possible ondisk seconds value with traditional timestamps.  This
++ * corresponds exactly with the incore timestamp Dec 13 20:45:52 UTC 1901.
++ */
++#define XFS_LEGACY_TIME_MIN	((int64_t)S32_MIN)
++
++/*
++ * Largest possible ondisk seconds value with traditional timestamps.  This
++ * corresponds exactly with the incore timestamp Jan 19 03:14:07 UTC 2038.
++ */
++#define XFS_LEGACY_TIME_MAX	((int64_t)S32_MAX)
++
+ /*
+  * On-disk inode structure.
+  *
+diff --git a/libxfs/xfs_fs.h b/libxfs/xfs_fs.h
+index fbc9031..4fa9852 100644
+--- a/libxfs/xfs_fs.h
++++ b/libxfs/xfs_fs.h
+@@ -694,6 +694,10 @@ struct timespec64 {
+ 	long		tv_nsec;		/* nanoseconds */
+ };
+ 
++#define U32_MAX			((uint32_t)~0U)
++#define S32_MAX			((int32_t)(U32_MAX >> 1))
++#define S32_MIN			((int32_t)(-S32_MAX - 1))
++
+ #ifndef HAVE_BBMACROS
+ /*
+  * Block I/O parameterization.	A basic block (BB) is the lowest size of

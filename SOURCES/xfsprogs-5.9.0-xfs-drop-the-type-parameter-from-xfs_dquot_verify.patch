@@ -1,0 +1,101 @@
+From bce109af5ea0b0d6547d8cd0500560f32532e6bd Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 4 Sep 2020 16:05:20 -0400
+Subject: [PATCH] xfs: drop the type parameter from xfs_dquot_verify
+
+Source kernel commit: f9751c4ad3d17fa93773c187732f10c8a49940e3
+
+xfs_qm_reset_dqcounts (aka quotacheck) is the only xfs_dqblk_verify
+caller that actually knows the specific quota type that it's looking
+for.  Since everything else just pass in type==0 (including the buffer
+verifier), drop the parameter and open-code the check like
+xfs_dquot_from_disk already does.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/libxfs/xfs_dquot_buf.c b/libxfs/xfs_dquot_buf.c
+index 5e31938..a3e8ba1 100644
+--- a/libxfs/xfs_dquot_buf.c
++++ b/libxfs/xfs_dquot_buf.c
+@@ -37,8 +37,7 @@ xfs_failaddr_t
+ xfs_dquot_verify(
+ 	struct xfs_mount *mp,
+ 	xfs_disk_dquot_t *ddq,
+-	xfs_dqid_t	 id,
+-	uint		 type)	  /* used only during quotacheck */
++	xfs_dqid_t	 id)	  /* used only during quotacheck */
+ {
+ 	/*
+ 	 * We can encounter an uninitialized dquot buffer for 2 reasons:
+@@ -60,8 +59,6 @@ xfs_dquot_verify(
+ 	if (ddq->d_version != XFS_DQUOT_VERSION)
+ 		return __this_address;
+ 
+-	if (type && ddq->d_flags != type)
+-		return __this_address;
+ 	if (ddq->d_flags != XFS_DQ_USER &&
+ 	    ddq->d_flags != XFS_DQ_PROJ &&
+ 	    ddq->d_flags != XFS_DQ_GROUP)
+@@ -95,14 +92,13 @@ xfs_failaddr_t
+ xfs_dqblk_verify(
+ 	struct xfs_mount	*mp,
+ 	struct xfs_dqblk	*dqb,
+-	xfs_dqid_t	 	id,
+-	uint		 	type)	/* used only during quotacheck */
++	xfs_dqid_t		id)	/* used only during quotacheck */
+ {
+ 	if (xfs_sb_version_hascrc(&mp->m_sb) &&
+ 	    !uuid_equal(&dqb->dd_uuid, &mp->m_sb.sb_meta_uuid))
+ 		return __this_address;
+ 
+-	return xfs_dquot_verify(mp, &dqb->dd_diskdq, id, type);
++	return xfs_dquot_verify(mp, &dqb->dd_diskdq, id);
+ }
+ 
+ /*
+@@ -207,7 +203,7 @@ xfs_dquot_buf_verify(
+ 		if (i == 0)
+ 			id = be32_to_cpu(ddq->d_id);
+ 
+-		fa = xfs_dqblk_verify(mp, &dqb[i], id + i, 0);
++		fa = xfs_dqblk_verify(mp, &dqb[i], id + i);
+ 		if (fa) {
+ 			if (!readahead)
+ 				xfs_buf_verifier_error(bp, -EFSCORRUPTED,
+diff --git a/libxfs/xfs_quota_defs.h b/libxfs/xfs_quota_defs.h
+index d3f2977..afe1ea0 100644
+--- a/libxfs/xfs_quota_defs.h
++++ b/libxfs/xfs_quota_defs.h
+@@ -140,9 +140,9 @@ typedef uint16_t	xfs_qwarncnt_t;
+ #define XFS_QMOPT_RESBLK_MASK	(XFS_QMOPT_RES_REGBLKS | XFS_QMOPT_RES_RTBLKS)
+ 
+ extern xfs_failaddr_t xfs_dquot_verify(struct xfs_mount *mp,
+-		struct xfs_disk_dquot *ddq, xfs_dqid_t id, uint type);
++		struct xfs_disk_dquot *ddq, xfs_dqid_t id);
+ extern xfs_failaddr_t xfs_dqblk_verify(struct xfs_mount *mp,
+-		struct xfs_dqblk *dqb, xfs_dqid_t id, uint type);
++		struct xfs_dqblk *dqb, xfs_dqid_t id);
+ extern int xfs_calc_dquots_per_chunk(unsigned int nbblks);
+ extern int xfs_dqblk_repair(struct xfs_mount *mp, struct xfs_dqblk *dqb,
+ 		xfs_dqid_t id, uint type);
+diff --git a/repair/dinode.c b/repair/dinode.c
+index 04c2dd5..77f78f1 100644
+--- a/repair/dinode.c
++++ b/repair/dinode.c
+@@ -1233,8 +1233,10 @@ _("cannot read inode %" PRIu64 ", file block %" PRIu64 ", disk block %" PRIu64 "
+ 					goto bad;
+ 				}
+ 			}
+-			if (libxfs_dquot_verify(mp, &dqb->dd_diskdq, dqid,
+-						quota_type) != NULL) {
++			if (libxfs_dquot_verify(mp, &dqb->dd_diskdq, dqid)
++						!= NULL ||
++			    (dqb->dd_diskdq.d_flags & XFS_DQ_ALLTYPES)
++						!= quota_type) {
+ 				do_warn(_("%s: Corrupt quota for id %u. "),
+ 						quota_string, dqid);
+ 				bad_dqb = 1;

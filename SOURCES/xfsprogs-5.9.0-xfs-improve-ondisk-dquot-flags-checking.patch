@@ -1,0 +1,98 @@
+From 28518f7782310951019d6d28f2a6e9f9fc6e4a1c Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Tue, 15 Sep 2020 15:50:35 -0400
+Subject: [PATCH] xfs: improve ondisk dquot flags checking
+
+Source kernel commit: a990f7a84edc9941956ea3c1dfb89733c80f9ad0
+
+Create an XFS_DQTYPE_ANY mask for ondisk dquots flags, and use that to
+ensure that we never accept any garbage flags when we're loading dquots.
+While we're at it, restructure the quota type flag checking to use the
+proper masking.
+
+Note that I plan to add y2038 support soon, which will require a new
+xfs_dqtype_t flag for extended timestamp support, hence all the work to
+make the type masking work correctly.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+NOTES: I did not backport the type-vs-flags split, so some of the
+naming convenstions are different here.
+
+diff --git a/db/check.c b/db/check.c
+index c3dae20..27f6639 100644
+--- a/db/check.c
++++ b/db/check.c
+@@ -3452,7 +3452,7 @@ process_quota(
+ 				error++;
+ 				continue;
+ 			}
+-			if (dqb->dd_diskdq.d_flags != exp_flags) {
++			if (dqb->dd_diskdq.d_flags & ~XFS_DQTYPE_ANY) {
+ 				if (scicb)
+ 					dbprintf(_("bad flags %#x for %s dqblk "
+ 						 "%lld entry %d id %u\n"),
+@@ -3461,6 +3461,17 @@ process_quota(
+ 				error++;
+ 				continue;
+ 			}
++			if ((dqb->dd_diskdq.d_flags & XFS_DQ_ALLTYPES)
++								!= exp_flags) {
++				if (scicb)
++					dbprintf(_("wrong type %#x for %s dqblk "
++						 "%lld entry %d id %u\n"),
++						dqb->dd_diskdq.d_flags &
++							XFS_DQ_ALLTYPES, s,
++						(xfs_fileoff_t)qbno, i, dqid);
++				error++;
++				continue;
++			}
+ 			if (be32_to_cpu(dqb->dd_diskdq.d_id) != dqid) {
+ 				if (scicb)
+ 					dbprintf(_("bad id %u for %s dqblk %lld "
+diff --git a/libxfs/xfs_dquot_buf.c b/libxfs/xfs_dquot_buf.c
+index a3e8ba1..324f528 100644
+--- a/libxfs/xfs_dquot_buf.c
++++ b/libxfs/xfs_dquot_buf.c
+@@ -39,6 +39,8 @@ xfs_dquot_verify(
+ 	xfs_disk_dquot_t *ddq,
+ 	xfs_dqid_t	 id)	  /* used only during quotacheck */
+ {
++	__u8			ddq_type;
++
+ 	/*
+ 	 * We can encounter an uninitialized dquot buffer for 2 reasons:
+ 	 * 1. If we crash while deleting the quotainode(s), and those blks got
+@@ -59,9 +61,12 @@ xfs_dquot_verify(
+ 	if (ddq->d_version != XFS_DQUOT_VERSION)
+ 		return __this_address;
+ 
+-	if (ddq->d_flags != XFS_DQ_USER &&
+-	    ddq->d_flags != XFS_DQ_PROJ &&
+-	    ddq->d_flags != XFS_DQ_GROUP)
++	if (ddq->d_flags & ~XFS_DQTYPE_ANY)
++		return __this_address;
++	ddq_type = ddq->d_flags & XFS_DQ_ALLTYPES;
++	if (ddq_type != XFS_DQ_USER &&
++	    ddq_type != XFS_DQ_PROJ &&
++	    ddq_type != XFS_DQ_GROUP)
+ 		return __this_address;
+ 
+ 	if (id != -1 && id != be32_to_cpu(ddq->d_id))
+diff --git a/libxfs/xfs_quota_defs.h b/libxfs/xfs_quota_defs.h
+index afe1ea0..c69dba4 100644
+--- a/libxfs/xfs_quota_defs.h
++++ b/libxfs/xfs_quota_defs.h
+@@ -31,6 +31,8 @@ typedef uint16_t	xfs_qwarncnt_t;
+ 
+ #define XFS_DQ_ALLTYPES		(XFS_DQ_USER|XFS_DQ_PROJ|XFS_DQ_GROUP)
+ 
++#define XFS_DQTYPE_ANY		(XFS_DQ_ALLTYPES)
++
+ #define XFS_DQ_FLAGS \
+ 	{ XFS_DQ_USER,		"USER" }, \
+ 	{ XFS_DQ_PROJ,		"PROJ" }, \

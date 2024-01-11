@@ -1,0 +1,76 @@
+From ca42fa70929e88781e7daeee4cf4588adb834661 Mon Sep 17 00:00:00 2001
+From: Bill O'Donnell <billodo@redhat.com>
+Date: Mon, 24 Aug 2020 13:23:23 -0400
+Subject: [PATCH] xfs_quota: command error message improvement
+
+Make the error messages for rudimentary xfs_quota commands
+(off, enable, disable) more user friendly, instead of the
+terse sys error outputs.
+
+Signed-off-by: Bill O'Donnell <billodo@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ quota/state.c | 32 ++++++++++++++++++++++++++------
+ 1 file changed, 26 insertions(+), 6 deletions(-)
+
+diff --git a/quota/state.c b/quota/state.c
+index 8f9718f1..7a595fc6 100644
+--- a/quota/state.c
++++ b/quota/state.c
+@@ -306,8 +306,16 @@ enable_enforcement(
+ 		return;
+ 	}
+ 	dir = mount->fs_name;
+-	if (xfsquotactl(XFS_QUOTAON, dir, type, 0, (void *)&qflags) < 0)
+-		perror("XFS_QUOTAON");
++	if (xfsquotactl(XFS_QUOTAON, dir, type, 0, (void *)&qflags) < 0) {
++		if (errno == EEXIST)
++			fprintf(stderr,
++				_("Quota enforcement already enabled.\n"));
++		else if (errno == EINVAL || errno == ENOSYS)
++			fprintf(stderr,
++				_("Can't enable enforcement when quota off.\n"));
++		else
++			perror("XFS_QUOTAON");
++	}
+ 	else if (flags & VERBOSE_FLAG)
+ 		state_quotafile_mount(stdout, type, mount, flags);
+ }
+@@ -328,8 +336,16 @@ disable_enforcement(
+ 		return;
+ 	}
+ 	dir = mount->fs_name;
+-	if (xfsquotactl(XFS_QUOTAOFF, dir, type, 0, (void *)&qflags) < 0)
+-		perror("XFS_QUOTAOFF");
++	if (xfsquotactl(XFS_QUOTAOFF, dir, type, 0, (void *)&qflags) < 0) {
++		if (errno == EEXIST)
++			fprintf(stderr,
++				_("Quota enforcement already disabled.\n"));
++		else if (errno == EINVAL || errno == ENOSYS)
++			fprintf(stderr,
++				_("Can't disable enforcement when quota off.\n"));
++		else
++			perror("XFS_QUOTAOFF");
++	}
+ 	else if (flags & VERBOSE_FLAG)
+ 		state_quotafile_mount(stdout, type, mount, flags);
+ }
+@@ -350,8 +366,12 @@ quotaoff(
+ 		return;
+ 	}
+ 	dir = mount->fs_name;
+-	if (xfsquotactl(XFS_QUOTAOFF, dir, type, 0, (void *)&qflags) < 0)
+-		perror("XFS_QUOTAOFF");
++	if (xfsquotactl(XFS_QUOTAOFF, dir, type, 0, (void *)&qflags) < 0) {
++		if (errno == EEXIST || errno == ENOSYS)
++			fprintf(stderr, _("Quota already off.\n"));
++		else
++			perror("XFS_QUOTAOFF");
++	}
+ 	else if (flags & VERBOSE_FLAG)
+ 		state_quotafile_mount(stdout, type, mount, flags);
+ }
+-- 
+2.31.1
+

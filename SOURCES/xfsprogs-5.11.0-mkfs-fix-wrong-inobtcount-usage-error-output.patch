@@ -1,0 +1,38 @@
+From 2c40c5a72b3cd0c4599bc84a7a8b09a496d46db3 Mon Sep 17 00:00:00 2001
+From: Zorro Lang <zlang@redhat.com>
+Date: Fri, 12 Feb 2021 17:23:05 -0500
+Subject: [PATCH] mkfs: fix wrong inobtcount usage error output
+
+When mkfs fails, it shows:
+  ...
+  /* metadata */         [-m crc=0|1,finobt=0|1,uuid=xxx,rmapbt=0|1,reflink=0|1,\n\
+                           inobtcnt=0|1,bigtime=0|1]\n\
+  ...
+
+The "inobtcnt=0|1" is wrong usage, it must be inobtcount, there's not
+an alias. To avoid misadvice, fix it.
+
+Signed-off-by: Zorro Lang <zlang@redhat.com>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+ mkfs/xfs_mkfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mkfs/xfs_mkfs.c b/mkfs/xfs_mkfs.c
+index 0c66255a..964299d3 100644
+--- a/mkfs/xfs_mkfs.c
++++ b/mkfs/xfs_mkfs.c
+@@ -928,7 +928,7 @@ usage( void )
+ 	fprintf(stderr, _("Usage: %s\n\
+ /* blocksize */		[-b size=num]\n\
+ /* metadata */		[-m crc=0|1,finobt=0|1,uuid=xxx,rmapbt=0|1,reflink=0|1,\n\
+-			    inobtcnt=0|1,bigtime=0|1]\n\
++			    inobtcount=0|1,bigtime=0|1]\n\
+ /* data subvol */	[-d agcount=n,agsize=n,file,name=xxx,size=num,\n\
+ 			    (sunit=value,swidth=value|su=num,sw=num|noalign),\n\
+ 			    sectsize=num\n\
+-- 
+2.27.0
+

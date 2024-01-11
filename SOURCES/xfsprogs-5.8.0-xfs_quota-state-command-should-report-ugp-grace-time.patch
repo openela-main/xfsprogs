@@ -1,0 +1,141 @@
+From d8a9454608ff97e98fb7de0da28f8d40804d2296 Mon Sep 17 00:00:00 2001
+From: Bill O'Donnell <billodo@redhat.com>
+Date: Mon, 24 Aug 2020 13:23:43 -0400
+Subject: [PATCH] xfs_quota: state command should report ugp grace times
+
+Since grace periods are now supported for three quota types (ugp),
+modify xfs_quota state command to report times for all three.
+Add a helper function for stat reporting.
+
+Signed-off-by: Bill O'Donnell <billodo@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+ quota/state.c | 96 +++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 67 insertions(+), 29 deletions(-)
+
+diff --git a/quota/state.c b/quota/state.c
+index 1627181d..19d34ed0 100644
+--- a/quota/state.c
++++ b/quota/state.c
+@@ -191,49 +191,87 @@ state_stat_to_statv(
+ }
+ 
+ static void
+-state_quotafile_mount(
++state_quotafile_stat(
+ 	FILE			*fp,
+ 	uint			type,
+-	struct fs_path		*mount,
++	struct fs_path          *mount,
++	struct fs_quota_statv	*sv,
++	struct fs_quota_stat	*s,
+ 	uint			flags)
+ {
+-	struct fs_quota_stat	s;
+-	struct fs_quota_statv	sv;
++	bool			accounting, enforcing;
++	struct fs_qfilestatv	*qsv;
+ 	char			*dev = mount->fs_name;
+ 
+-	sv.qs_version = FS_QSTATV_VERSION1;
+-
+-	if (xfsquotactl(XFS_GETQSTATV, dev, type, 0, (void *)&sv) < 0) {
+-		if (xfsquotactl(XFS_GETQSTAT, dev, type, 0, (void *)&s) < 0) {
++	if (xfsquotactl(XFS_GETQSTATV, dev, type, 0, (void *)sv) < 0) {
++		if (xfsquotactl(XFS_GETQSTAT, dev, type, 0, (void *)s) < 0) {
+ 			if (flags & VERBOSE_FLAG)
+ 				fprintf(fp,
+ 					_("%s quota are not enabled on %s\n"),
+ 					type_to_string(type), dev);
+ 			return;
+ 		}
+-		state_stat_to_statv(&s, &sv);
++		state_stat_to_statv(s, sv);
++	}
++
++	switch(type) {
++	case XFS_USER_QUOTA:
++		qsv = &sv->qs_uquota;
++		accounting = sv->qs_flags & XFS_QUOTA_UDQ_ACCT;
++		enforcing = sv->qs_flags & XFS_QUOTA_UDQ_ENFD;
++		break;
++	case XFS_GROUP_QUOTA:
++		qsv = &sv->qs_gquota;
++		accounting = sv->qs_flags & XFS_QUOTA_GDQ_ACCT;
++		enforcing = sv->qs_flags & XFS_QUOTA_GDQ_ENFD;
++		break;
++	case XFS_PROJ_QUOTA:
++		qsv = &sv->qs_pquota;
++		accounting = sv->qs_flags & XFS_QUOTA_PDQ_ACCT;
++		enforcing = sv->qs_flags & XFS_QUOTA_PDQ_ENFD;
++		break;
++	default:
++		return;
+ 	}
+ 
+-	if (type & XFS_USER_QUOTA)
+-		state_qfilestat(fp, mount, XFS_USER_QUOTA, &sv.qs_uquota,
+-				sv.qs_flags & XFS_QUOTA_UDQ_ACCT,
+-				sv.qs_flags & XFS_QUOTA_UDQ_ENFD);
+-	if (type & XFS_GROUP_QUOTA)
+-		state_qfilestat(fp, mount, XFS_GROUP_QUOTA, &sv.qs_gquota,
+-				sv.qs_flags & XFS_QUOTA_GDQ_ACCT,
+-				sv.qs_flags & XFS_QUOTA_GDQ_ENFD);
+-	if (type & XFS_PROJ_QUOTA)
+-		state_qfilestat(fp, mount, XFS_PROJ_QUOTA, &sv.qs_pquota,
+-				sv.qs_flags & XFS_QUOTA_PDQ_ACCT,
+-				sv.qs_flags & XFS_QUOTA_PDQ_ENFD);
+-
+-	state_timelimit(fp, XFS_BLOCK_QUOTA, sv.qs_btimelimit);
+-	state_warnlimit(fp, XFS_BLOCK_QUOTA, sv.qs_bwarnlimit);
+-
+-	state_timelimit(fp, XFS_INODE_QUOTA, sv.qs_itimelimit);
+-	state_warnlimit(fp, XFS_INODE_QUOTA, sv.qs_iwarnlimit);
+-
+-	state_timelimit(fp, XFS_RTBLOCK_QUOTA, sv.qs_rtbtimelimit);
++
++	state_qfilestat(fp, mount, type, qsv, accounting, enforcing);
++
++	state_timelimit(fp, XFS_BLOCK_QUOTA, sv->qs_btimelimit);
++	state_warnlimit(fp, XFS_BLOCK_QUOTA, sv->qs_bwarnlimit);
++
++	state_timelimit(fp, XFS_INODE_QUOTA, sv->qs_itimelimit);
++	state_warnlimit(fp, XFS_INODE_QUOTA, sv->qs_iwarnlimit);
++
++	state_timelimit(fp, XFS_RTBLOCK_QUOTA, sv->qs_rtbtimelimit);
++}
++
++static void
++state_quotafile_mount(
++	FILE			*fp,
++	uint			type,
++	struct fs_path		*mount,
++	uint			flags)
++{
++	struct fs_quota_stat	s;
++	struct fs_quota_statv	sv;
++
++	sv.qs_version = FS_QSTATV_VERSION1;
++
++	if (type & XFS_USER_QUOTA) {
++		state_quotafile_stat(fp, XFS_USER_QUOTA, mount,
++				     &sv, &s, flags);
++	}
++
++	if (type & XFS_GROUP_QUOTA) {
++		state_quotafile_stat(fp, XFS_GROUP_QUOTA, mount,
++				     &sv, &s, flags);
++	}
++
++	if (type & XFS_PROJ_QUOTA) {
++		state_quotafile_stat(fp, XFS_PROJ_QUOTA, mount,
++				     &sv, &s, flags);
++	}
+ }
+ 
+ static void
+-- 
+2.31.1
+

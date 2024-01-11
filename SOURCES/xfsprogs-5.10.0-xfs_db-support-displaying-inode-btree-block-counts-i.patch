@@ -1,0 +1,39 @@
+From 13b8917251601e06660ed6ebe6bdeafa4c431ca3 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Date: Fri, 20 Nov 2020 17:03:27 -0500
+Subject: [PATCH] xfs_db: support displaying inode btree block counts in AGI
+ header
+
+Fix up xfs_db to support displaying the btree block counts.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Brian Foster <bfoster@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
+
+diff --git a/db/agi.c b/db/agi.c
+index bf21b2d..cfb4f7b 100644
+--- a/db/agi.c
++++ b/db/agi.c
+@@ -48,6 +48,8 @@ const field_t	agi_flds[] = {
+ 	{ "lsn", FLDT_UINT64X, OI(OFF(lsn)), C1, 0, TYP_NONE },
+ 	{ "free_root", FLDT_AGBLOCK, OI(OFF(free_root)), C1, 0, TYP_FINOBT },
+ 	{ "free_level", FLDT_UINT32D, OI(OFF(free_level)), C1, 0, TYP_NONE },
++	{ "ino_blocks", FLDT_UINT32D, OI(OFF(iblocks)), C1, 0, TYP_NONE },
++	{ "fino_blocks", FLDT_UINT32D, OI(OFF(fblocks)), C1, 0, TYP_NONE },
+ 	{ NULL }
+ };
+ 
+diff --git a/db/sb.c b/db/sb.c
+index 5059b26..d63fc71 100644
+--- a/db/sb.c
++++ b/db/sb.c
+@@ -687,6 +687,8 @@ version_string(
+ 		strcat(s, ",RMAPBT");
+ 	if (xfs_sb_version_hasreflink(sbp))
+ 		strcat(s, ",REFLINK");
++	if (xfs_sb_version_hasinobtcounts(sbp))
++		strcat(s, ",INOBTCNT");
+ 	return s;
+ }
+ 
