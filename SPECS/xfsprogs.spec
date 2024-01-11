@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
-Version:	5.14.2
-Release:	1%{?dist}
+Version:	5.19.0
+Release:	4%{?dist}
 License:	GPL+ and LGPLv2+
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -23,8 +23,20 @@ Obsoletes:	xfsprogs-qa-devel <= %{version}
 Conflicts:	xfsdump < 3.0.1
 Suggests:	xfsprogs-xfs_scrub
 
-Patch0:		xfsprogs-5.12.0-default-bigtime-inobtcnt-on.patch
+Patch0:		xfsprogs-5.19.0-disable-old-kernel-bigtime-inobtcnt-on.patch
 Patch1:		xfsprogs-5.12.0-example-conf.patch
+Patch2:		xfsprogs-5.19.0-mkfs-tolerate-tiny-filesystems.patch
+Patch3:		xfsprogs-5.19.0-xfs-hoist-refcount-record-merge-predicates.patch
+Patch4:		xfsprogs-5.19.0-xfs_db-fix-dir3-block-magic-check.patch
+Patch5:		xfsprogs-5.19.0-xfs-estimate-post-merge-refcounts-correctly.patch
+Patch7:		xfsprogs-5.19.0-xfs-fix-off-by-one-error-in-xfs_btree_space_to_heigh.patch
+Patch8:		xfsprogs-5.19.0-xfs-fix-sb-write-verify-for-lazysbcount.patch
+Patch9:		xfsprogs-5.19.0-xfs-get-rid-of-assert-from-xfs_btree_islastblock.patch
+Patch10:	xfsprogs-5.19.0-xfs-removed-useless-condition-in-function-xfs_attr_n.patch
+Patch11:	xfsprogs-5.19.0-xfs_repair-retain-superblock-buffer-to-avoid-write-h.patch
+Patch12:	xfsprogs-kernel-xfs-set-bnobt-cntbt-numrecs-correctly-when-formattin.patch
+Patch13:	xfsprogs-rhelonly-mkfs-fix-man-s-default-value-for-sparse-option.patch
+Patch14:	xfsprogs-6.5.0-mkfs.xfs.8-correction-on-mkfs.xfs-manpage-since-refl.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -136,6 +148,26 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_libdir}/*.so
 
 %changelog
+* Wed Aug 02 2023 Pavel Reichl <preichl@redhat.com> - 5.19.0-4
+- Fix man page, mkfs.xfs(8): Update section on dax+reflink
+- compatibility (#2226900)
+
+* Tue Jun 20 2023 Pavel Reichl <preichl@redhat.com> - 5.19.0-3
+- Fix man page default for sparse mkfs option (#2216118)
+
+* Fri May 26 2023 Pavel Reichl <preichl@redhat.com> - 5.19.0-2
+- Fix xfs corrupted when AG size is a multiple of stripe width
+- Related: rhbz#2192982
+
+* Tue Jan 10 2023 Pavel Reichl <preichl@redhat.com> - 5.19.0-1
+- New upstream release
+- Tolerate tiny (<300MB) filesystems
+- Rename xfsprogs-5.12.0-default-bigtime-inobtcnt-on.patch to
+    xfsprogs-5.19.0-disable-old-kernel-bigtime-inobtcnt-on.patch
+    and amend it to reflect upstream changes
+- Backport all "Fixing" patches relevant to 5.19
+  Related: rhbz#2142910
+
 * Fri Jan 21 2022 Pavel Reichl <preichl@redhat.com> - 5.14.2-1
 - New upstream release
   Related: rhbz#2041525
