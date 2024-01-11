@@ -1,0 +1,112 @@
+From 50dba8189b1f628073eb61d824ae8a8a1b43cefb Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Wed, 13 Jul 2022 20:58:28 -0500
+Subject: [PATCH] mkfs: terminate getsubopt arrays properly
+
+Having not drank any (or maybe too much) coffee this morning, I typed:
+
+$ mkfs.xfs -d agcount=3 -d nrext64=0
+Segmentation fault
+
+I traced this down to getsubopt walking off the end of the dopts.subopts
+array.  The manpage says you're supposed to terminate the suboptions
+string array with a NULL entry, but the structure definition uses
+MAX_SUBOPTS/D_MAX_OPTS directly, which means there is no terminator.
+
+Explicitly terminate each suboption array with a NULL entry after
+making room for it.
+
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+[sandeen: explicitly add NULL terminators & clarify comment]
+Reviewed-by: Eric Sandeen <sandeen@sandeen.net>
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ mkfs/xfs_mkfs.c | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/mkfs/xfs_mkfs.c b/mkfs/xfs_mkfs.c
+index db322b3a..b140b815 100644
+--- a/mkfs/xfs_mkfs.c
++++ b/mkfs/xfs_mkfs.c
+@@ -140,8 +140,11 @@ enum {
+ 	M_MAX_OPTS,
+ };
+ 
+-/* Just define the max options array size manually right now */
+-#define MAX_SUBOPTS	D_MAX_OPTS
++/*
++ * Just define the max options array size manually to the largest
++ * enum right now, leaving room for a NULL terminator at the end
++ */
++#define MAX_SUBOPTS	(D_MAX_OPTS + 1)
+ 
+ #define SUBOPT_NEEDS_VAL	(-1LL)
+ #define MAX_CONFLICTS	8
+@@ -251,6 +254,7 @@ static struct opt_params bopts = {
+ 	.name = 'b',
+ 	.subopts = {
+ 		[B_SIZE] = "size",
++		[B_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = B_SIZE,
+@@ -306,6 +311,7 @@ static struct opt_params dopts = {
+		[D_PROJINHERIT] = "projinherit",
+ 		[D_EXTSZINHERIT] = "extszinherit",
+ 		[D_COWEXTSIZE] = "cowextsize",
++		[D_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = D_AGCOUNT,
+@@ -443,6 +449,7 @@ static struct opt_params iopts = {
+		[I_ATTR] = "attr",
+		[I_PROJID32BIT] = "projid32bit",
+		[I_SPINODES] = "sparse",
++		[I_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = I_ALIGN,
+@@ -515,6 +522,7 @@ static struct opt_params lopts = {
+ 		[L_FILE] = "file",
+ 		[L_NAME] = "name",
+ 		[L_LAZYSBCNTR] = "lazy-count",
++		[L_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = L_AGNUM,
+@@ -607,6 +615,7 @@ static struct opt_params nopts = {
+ 		[N_SIZE] = "size",
+ 		[N_VERSION] = "version",
+ 		[N_FTYPE] = "ftype",
++		[N_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = N_SIZE,
+@@ -642,6 +651,7 @@ static struct opt_params ropts = {
+ 		[R_FILE] = "file",
+ 		[R_NAME] = "name",
+ 		[R_NOALIGN] = "noalign",
++		[R_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = R_EXTSIZE,
+@@ -689,6 +699,7 @@ static struct opt_params sopts = {
+ 	.subopts = {
+ 		[S_SIZE] = "size",
+ 		[S_SECTSIZE] = "sectsize",
++		[S_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = S_SIZE,
+@@ -725,6 +736,7 @@ static struct opt_params mopts = {
+ 		[M_REFLINK] = "reflink",
+ 		[M_INOBTCNT] = "inobtcount",
+ 		[M_BIGTIME] = "bigtime",
++		[M_MAX_OPTS] = NULL,
+ 	},
+ 	.subopt_params = {
+ 		{ .index = M_CRC,
+-- 
+2.40.1
+

@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	5.0.0
-Release:	11%{?dist}
+Release:	12%{?dist}
 License:	GPL+ and LGPLv2+
 Group:		System Environment/Base
 URL:		https://xfs.wiki.kernel.org
@@ -80,7 +80,11 @@ Patch59:	xfsprogs-5.13.0-xfs-rename-struct-xfs_legacy_ictimestamp.patch
 Patch60:	xfsprogs-5.11.0-mkfs-fix-wrong-inobtcount-usage-error-output.patch
 Patch61:	xfsprogs-5.12.0-libxfs-expose-inobtcount-in-xfs-geometry.patch
 Patch62:	xfsprogs-5.12.0-libfrog-report-inobtcount-in-geometry.patch
-Patch63:	xfsprogs-5.9.0-xfs-ignore-autofs-mount-table-entries.patch
+Patch63:	xfsprogs-5.19.0-xfs_repair-ignore-empty-xattr-leaf-blocks.patch
+Patch64:	xfsprogs-5.19.0-mkfs-terminate-getsubopt-arrays-properly.patch
+Patch65:	xfsprogs-5.9.0-xfs-ignore-autofs-mount-table-entries.patch
+Patch66:	xfsprogs-5.10.0-xfs_repair-fix-progress-reporting.patch
+Patch67:	xfsprogs-rhelonly-mkfs-fix-man-s-default-value-for-sparse-option.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -175,6 +179,10 @@ also want to install xfsprogs.
 %patch61 -p1
 %patch62 -p1
 %patch63 -p1
+%patch64 -p1
+%patch65 -p1
+%patch66 -p1
+%patch67 -p1
 
 %build
 export tagname=CC
@@ -234,8 +242,13 @@ rm -rf $RPM_BUILD_ROOT/%{_mandir}/man8/xfs_scrub*
 %{_libdir}/*.so
 
 %changelog
-* Fri May 19 2023 Pavel Reichl <preichl@redhat.com> - 5.0.0-11
-- Fix ignore autofs mount table entries (#2208391)
+* Thu Jun 08 2023 Pavel Reichl <preichl@redhat.com> - 5.0.0-12
+- Fix xfs_repair progress reporting is not working (#2183398)
+- Fix man page default for sparse mkfs option (#2118564)
+
+* Tue May 02 2023 Pavel Reichl <preichl@redhat.com> - 5.0.0-11
+- Fix xfstest fails with error "missing xfsprogs fix patch"(#2161936,#2160746)
+- Fix ignore autofs mount table entries (#2182361)
 
 * Thu Dec 09 2021 Bill O'Donnell <bodonnel@redhat.com> 5.0.0-10
 - xfsprogs: enable bigtime and inode btree counter features in RHEL8 (#2024201))
