@@ -1,12 +1,12 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
-Version:	5.19.0
-Release:	4%{?dist}
+Version:	6.3.0
+Release:	1%{?dist}
 License:	GPL+ and LGPLv2+
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
 Source1:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.sign
-Source2:	https://git.kernel.org/pub/scm/docs/kernel/pgpkeys.git/plain/keys/20AE1692E13DDEE0.asc
+Source2:        https://git.kernel.org/pub/scm/docs/kernel/pgpkeys.git/plain/keys/13F703E6C11CF6F0.asc
 Source3:	rhel8.0.conf
 Requires:	util-linux
 BuildRequires:	make
@@ -23,20 +23,20 @@ Obsoletes:	xfsprogs-qa-devel <= %{version}
 Conflicts:	xfsdump < 3.0.1
 Suggests:	xfsprogs-xfs_scrub
 
-Patch0:		xfsprogs-5.19.0-disable-old-kernel-bigtime-inobtcnt-on.patch
-Patch1:		xfsprogs-5.12.0-example-conf.patch
-Patch2:		xfsprogs-5.19.0-mkfs-tolerate-tiny-filesystems.patch
-Patch3:		xfsprogs-5.19.0-xfs-hoist-refcount-record-merge-predicates.patch
-Patch4:		xfsprogs-5.19.0-xfs_db-fix-dir3-block-magic-check.patch
-Patch5:		xfsprogs-5.19.0-xfs-estimate-post-merge-refcounts-correctly.patch
-Patch7:		xfsprogs-5.19.0-xfs-fix-off-by-one-error-in-xfs_btree_space_to_heigh.patch
-Patch8:		xfsprogs-5.19.0-xfs-fix-sb-write-verify-for-lazysbcount.patch
-Patch9:		xfsprogs-5.19.0-xfs-get-rid-of-assert-from-xfs_btree_islastblock.patch
-Patch10:	xfsprogs-5.19.0-xfs-removed-useless-condition-in-function-xfs_attr_n.patch
-Patch11:	xfsprogs-5.19.0-xfs_repair-retain-superblock-buffer-to-avoid-write-h.patch
-Patch12:	xfsprogs-kernel-xfs-set-bnobt-cntbt-numrecs-correctly-when-formattin.patch
-Patch13:	xfsprogs-rhelonly-mkfs-fix-man-s-default-value-for-sparse-option.patch
-Patch14:	xfsprogs-6.5.0-mkfs.xfs.8-correction-on-mkfs.xfs-manpage-since-refl.patch
+Patch0:		xfsprogs-rhelonly-disable-old-kernel-bigtime-inobtcnt-on.patch
+Patch1:		xfsprogs-rhelonly-example-conf.patch
+Patch2:		xfsprogs-rhelonly-mkfs-tolerate-tiny-filesystems.patch
+Patch3:		xfsprogs-rhelonly-xfs_quota-fix-missing-mount-point-warning.patch
+Patch4:		xfsprogs-6.4.0-set-bnobt-cntbt-numrecs-correctly-when-formattin.patch
+Patch5:		xfsprogs-6.4.0-mkfs-fix-man-s-default-value-for-sparse-option.patch
+Patch6:		xfsprogs-6.4.0-xfs_repair-don-t-add-junked-entries-to-the-rebuilt-d.patch
+Patch7:		xfsprogs-6.4.0-xfs_repair-fix-messaging-when-fixing-imap-due-to-spa.patch
+Patch8:		xfsprogs-6.4.0-xfs_repair-don-t-spray-correcting-imap-all-by-itself.patch
+Patch9:		xfsprogs-6.4.0-xfs_repair-fix-messaging-when-shortform_dir2_junk-is.patch
+Patch10:	xfsprogs-6.4.0-xfs_db-move-obfuscate_name-assertion-to-callers.patch
+Patch11:	xfsprogs-6.4.0-xfs_db-fix-metadump-name-obfuscation-for-ascii-ci-fi.patch
+Patch12:	xfsprogs-6.5.0-mkfs.xfs.8-correction-on-mkfs.xfs-manpage-since-refl.patch
+Patch13:	xfsprogs-6.4.0-xfs-stabilize-the-dirent-name-transformation-functio.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -148,6 +148,46 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_libdir}/*.so
 
 %changelog
+* Mon Nov 13 2023 Pavel Reichl <preichl@redhat.com> - 6.3.0-1
+- Rebase to upstream version 6.3.0
+-
+- Following is a list of dropped backported patches which
+- are contained in the current rebase:
+- xfsprogs-5.19.0-xfs-hoist-refcount-record-merge-predicates.patch (v6.2.0)
+- xfsprogs-5.19.0-xfs_db-fix-dir3-block-magic-check.patch (v6.1.0)
+- xfsprogs-5.19.0-xfs-estimate-post-merge-refcounts-correctly.patch (v6.2.0)
+- xfsprogs-5.19.0-xfs-get-rid-of-assert-from-xfs_btree_islastblock.patch (v6.2.0)
+- xfsprogs-5.19.0-xfs-fix-off-by-one-error-in-xfs_btree_space_to_heigh.patch (v6.2.0)
+- xfsprogs-5.19.0-xfs-fix-sb-write-verify-for-lazysbcount.patch (v6.1.0)
+- xfsprogs-5.19.0-xfs-removed-useless-condition-in-function-xfs_attr_n.patch (v6.0.0)
+- xfsprogs-5.19.0-xfs_repair-retain-superblock-buffer-to-avoid-write-h.patch (v6.1.0)
+-
+- Rename the remaining patches so the name contains upstream version in which
+- they are implemented, or "rhelonly".
+-
+- Drop Eric Sandeen's public key used to check tarball signature and replace it by
+- Carlos Maiolino's (current upstream xfsprogs maintainer).
+-
+- Following is a list of newly backported patches from versions released after 6.3
+- which are fixing patches present in version 6.3:
+- xfsprogs-6.4.0-xfs_repair-don-t-add-junked-entries-to-the-rebuilt-d.patch
+- xfsprogs-6.4.0-xfs_repair-don-t-spray-correcting-imap-all-by-itself.patch
+- xfsprogs-6.4.0-xfs_repair-fix-messaging-when-fixing-imap-due-to-spa.patch
+- xfsprogs-6.4.0-xfs_repair-fix-messaging-when-shortform_dir2_junk-is.patch
+-
+- Backport:
+- xfsprogs-6.4.0-xfs_db-move-obfuscate_name-assertion-to-callers.patch
+- xfsprogs-6.4.0-xfs_db-fix-metadump-name-obfuscation-for-ascii-ci-fi.patch
+- xfsprogs-6.4.0-xfs-stabilize-the-dirent-name-transformation-functio.patch
+- to implement RHEL-RHEL-8284
+-
+- Backport xfsprogs-rhelonly-xfs_quota-fix-missing-mount-point-warning.patch
+- to implement RHEL-7900
+-
+- Related: RHEL-15399
+- Related: RHEL-8284
+- Related: RHEL-7900
+
 * Wed Aug 02 2023 Pavel Reichl <preichl@redhat.com> - 5.19.0-4
 - Fix man page, mkfs.xfs(8): Update section on dax+reflink
 - compatibility (#2226900)
