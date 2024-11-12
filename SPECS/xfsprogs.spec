@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
-Version:	6.3.0
-Release:	1%{?dist}
+Version:	6.4.0
+Release:	4%{?dist}
 License:	GPL+ and LGPLv2+
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -26,17 +26,19 @@ Suggests:	xfsprogs-xfs_scrub
 Patch0:		xfsprogs-rhelonly-disable-old-kernel-bigtime-inobtcnt-on.patch
 Patch1:		xfsprogs-rhelonly-example-conf.patch
 Patch2:		xfsprogs-rhelonly-mkfs-tolerate-tiny-filesystems.patch
-Patch3:		xfsprogs-rhelonly-xfs_quota-fix-missing-mount-point-warning.patch
-Patch4:		xfsprogs-6.4.0-set-bnobt-cntbt-numrecs-correctly-when-formattin.patch
-Patch5:		xfsprogs-6.4.0-mkfs-fix-man-s-default-value-for-sparse-option.patch
-Patch6:		xfsprogs-6.4.0-xfs_repair-don-t-add-junked-entries-to-the-rebuilt-d.patch
-Patch7:		xfsprogs-6.4.0-xfs_repair-fix-messaging-when-fixing-imap-due-to-spa.patch
-Patch8:		xfsprogs-6.4.0-xfs_repair-don-t-spray-correcting-imap-all-by-itself.patch
-Patch9:		xfsprogs-6.4.0-xfs_repair-fix-messaging-when-shortform_dir2_junk-is.patch
-Patch10:	xfsprogs-6.4.0-xfs_db-move-obfuscate_name-assertion-to-callers.patch
-Patch11:	xfsprogs-6.4.0-xfs_db-fix-metadump-name-obfuscation-for-ascii-ci-fi.patch
-Patch12:	xfsprogs-6.5.0-mkfs.xfs.8-correction-on-mkfs.xfs-manpage-since-refl.patch
-Patch13:	xfsprogs-6.4.0-xfs-stabilize-the-dirent-name-transformation-functio.patch
+Patch3:		xfsprogs-rhelonly-upstream-v6.6.0-xfs_quota-fix-missing-mount-point-warning.patch
+Patch4:		xfsprogs-6.5.0-mkfs.xfs.8-correction-on-mkfs.xfs-manpage-since-refl.patch
+Patch5:		xfsprogs-6.5.0-xfs_db.xfs.8-xfs_db-fix-leak-in-flist_find_ftyp.patch
+Patch6:		xfsprogs-6.5.0-xfs_repair.xfs.8-xfs_repair-make-duration-take-time_t.patch
+Patch7:		xfsprogs-6.5.0-xfs_repair.xfs.8-xfs_scrub-don-t-call-phase_end-if-phase_rusage-was-n.patch
+Patch8:		xfsprogs-6.5.0-xfs_fsr.xfs.8-xfs_fsr-convert-fsrallfs-to-use-time_t-instead-of-in.patch
+Patch9:		xfsprogs-6.5.0-xfs_fsr.xfs.8-xfs_fsr-replace-atoi-with-strtol.patch
+Patch10:	xfsprogs-6.5.0-xfs_db.xfs.8-xfs_db-add-helper-for-flist_find_type-for-clearer-fi.patch
+Patch11:	xfsprogs-6.5.0-xfs_repair.xfs.8-xfs_repair-catch-strtol-errors.patch
+Patch12:	xfsprogs-rhelonly-xfs_db-fix-unitialized-variable-in-check_parents-function.patch
+Patch13:	xfsprogs-6.5.0-xfs.8-xfs-fix-bounds-check-in-xfs_defer_agfl_block.patch
+# v6.9.0-270-g5a43a004: This patch is taken from the `for-next` branch.
+Patch14:	xfsprogs-for-next-xfs_repair-allow-symlinks-with-short-remote-targets.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -148,6 +150,47 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_libdir}/*.so
 
 %changelog
+* Thu Aug 15 2024 Pavel Reichl <preichl@redhat.com> - 6.4.0-4
+- xfs_repair: allow symlinks with short remote targets
+- Related: RHEL-54306 and RHEL-53164
+
+* Thu Jul 11 2024 Bill O'Donnell <bodonnel@redhat.com> - 6.4.0-3
+- Fix coverity issue
+- Related: RHEL-39449
+- Following is the patch list:
+- xfsprogs-6.5.0-xfs.8-xfs-fix-bounds-check-in-xfs_defer_agfl_block.patch
+
+* Wed Jun 26 2024 Bill O'Donnell <bodonnel@redhat.com> - 6.4.0-2
+- Fix various CVE issues.
+- Related: RHEL-32996
+- Following is the patch list:
+- xfsprogs-6.5.0-xfs_db.xfs.8-xfs_db-fix-leak-in-flist_find_ftyp.patch
+- xfsprogs-6.5.0-xfs_repair.xfs.8-xfs_repair-make-duration-take-time_t.patch
+- xfsprogs-6.5.0-xfs_repair.xfs.8-xfs_scrub-don-t-call-phase_end-if-phase_rusage-was-n.patch
+- xfsprogs-6.5.0-xfs_fsr.xfs.8-xfs_fsr-convert-fsrallfs-to-use-time_t-instead-of-in.patch
+- xfsprogs-6.5.0-xfs_fsr.xfs.8-xfs_fsr-replace-atoi-with-strtol.patch
+- xfsprogs-6.5.0-xfs_db.xfs.8-xfs_db-add-helper-for-flist_find_type-for-clearer-fi.patch
+- xfsprogs-6.5.0-xfs_repair.xfs.8-xfs_repair-catch-strtol-errors.patch
+- xfsprogs-rhelonly-xfs_db-fix-unitialized-variable-in-check_parents-function.patch
+
+* Mon May 20 2024 Pavel Reichl <preichl@redhat.com> - 6.4.0-1
+- Rebase to a more recent upstream release
+- Related: RHEL-28339
+- Following is a list of dropped backported patches which
+- are contained in the current rebase:
+- xfsprogs-6.4.0-set-bnobt-cntbt-numrecs-correctly-when-formattin.patch
+- xfsprogs-6.4.0-mkfs-fix-man-s-default-value-for-sparse-option.patch
+- xfsprogs-6.4.0-xfs_repair-don-t-add-junked-entries-to-the-rebuilt-d.patch
+- xfsprogs-6.4.0-xfs_repair-fix-messaging-when-fixing-imap-due-to-spa.patch
+- xfsprogs-6.4.0-xfs_repair-don-t-spray-correcting-imap-all-by-itself.patch
+- xfsprogs-6.4.0-xfs_repair-fix-messaging-when-shortform_dir2_junk-is.patch
+- xfsprogs-6.4.0-xfs_db-move-obfuscate_name-assertion-to-callers.patch
+- xfsprogs-6.4.0-xfs_db-fix-metadump-name-obfuscation-for-ascii-ci-fi.patch
+- xfsprogs-6.4.0-xfs-stabilize-the-dirent-name-transformation-functio.patch
+-
+- Rename xfs_quota-fix-missing-mount-point-warning.patch to reflect upstream
+-	version it was merged in.
+
 * Mon Nov 13 2023 Pavel Reichl <preichl@redhat.com> - 6.3.0-1
 - Rebase to upstream version 6.3.0
 -

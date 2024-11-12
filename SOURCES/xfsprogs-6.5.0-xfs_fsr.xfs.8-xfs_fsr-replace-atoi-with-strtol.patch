@@ -1,0 +1,64 @@
+From 652f8066b7ca7dc1e08c2c40cdd9ba593a9de568 Mon Sep 17 00:00:00 2001
+From: Andrey Albershteyn <aalbersh@redhat.com>
+Date: Wed, 17 Apr 2024 18:19:29 +0200
+Subject: [PATCH] xfs_fsr: replace atoi() with strtol()
+
+Replace atoi() which silently fails with strtol() and report the
+error.
+
+Signed-off-by: Andrey Albershteyn <aalbersh@redhat.com>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fsr/xfs_fsr.c | 26 +++++++++++++++++++++++---
+ 1 file changed, 23 insertions(+), 3 deletions(-)
+
+diff --git a/fsr/xfs_fsr.c b/fsr/xfs_fsr.c
+index 02d61ef9..fdd37756 100644
+--- a/fsr/xfs_fsr.c
++++ b/fsr/xfs_fsr.c
+@@ -164,7 +164,13 @@ main(int argc, char **argv)
+ 			usage(1);
+ 			break;
+ 		case 't':
+-			howlong = atoi(optarg);
++			errno = 0;
++			howlong = strtol(optarg, NULL, 10);
++			if (errno) {
++				fprintf(stderr, _("%s: invalid runtime: %s\n"),
++					optarg, strerror(errno));
++				exit(1);
++			}
+ 			if (howlong > INT_MAX) {
+ 				fprintf(stderr,
+ 				_("%s: the maximum runtime is %d seconds.\n"),
+@@ -179,10 +185,24 @@ main(int argc, char **argv)
+ 			mtab = optarg;
+ 			break;
+ 		case 'b':
+-			argv_blksz_dio = atoi(optarg);
++			errno = 0;
++			argv_blksz_dio = strtol(optarg, NULL, 10);
++			if (errno) {
++				fprintf(stderr,
++					_("%s: invalid block size: %s\n"),
++					optarg, strerror(errno));
++				exit(1);
++			}
+ 			break;
+ 		case 'p':
+-			npasses = atoi(optarg);
++			errno = 0;
++			npasses = strtol(optarg, NULL, 10);
++			if (errno) {
++				fprintf(stderr,
++					_("%s: invalid number of passes: %s\n"),
++					optarg, strerror(errno));
++				exit(1);
++			}
+ 			break;
+ 		case 'C':
+ 			/* Testing opt: coerses frag count in result */
+-- 
+2.45.2
+

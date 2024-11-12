@@ -1,0 +1,35 @@
+From 21dc682a3842eb7e4c79f7e511d840e708d7e757 Mon Sep 17 00:00:00 2001
+From: Andrey Albershteyn <aalbersh@redhat.com>
+Date: Tue, 23 Apr 2024 14:36:14 +0200
+Subject: [PATCH] xfs_db: fix leak in flist_find_ftyp()
+
+When count is zero fl reference is lost. Fix it by freeing the list.
+
+Fixes: a0d79cb37a36 ("xfs_db: make flist_find_ftyp() to check for field existance on disk")
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Bill O'Donnell <bodonnel@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Andrey Albershteyn <aalbersh@redhat.com>
+---
+ db/flist.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/db/flist.c b/db/flist.c
+index c81d229a..0a6cc5fc 100644
+--- a/db/flist.c
++++ b/db/flist.c
+@@ -424,8 +424,10 @@ flist_find_ftyp(
+ 		if (f->ftyp == type)
+ 			return fl;
+ 		count = fcount(f, obj, startoff);
+-		if (!count)
++		if (!count) {
++			flist_free(fl);
+ 			continue;
++		}
+ 		fa = &ftattrtab[f->ftyp];
+ 		if (fa->subfld) {
+ 			flist_t *nfl;
+-- 
+2.45.2
+

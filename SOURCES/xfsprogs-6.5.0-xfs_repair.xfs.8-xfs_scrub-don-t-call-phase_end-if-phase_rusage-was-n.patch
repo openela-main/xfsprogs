@@ -1,0 +1,43 @@
+From c4dd920b8a8900046e0785e55a43c7190b82c59a Mon Sep 17 00:00:00 2001
+From: Andrey Albershteyn <aalbersh@redhat.com>
+Date: Tue, 23 Apr 2024 14:36:16 +0200
+Subject: [PATCH] xfs_scrub: don't call phase_end if phase_rusage was not
+ initialized
+
+If unicrash_load() fails, all_pi can be used uninitialized in
+phase_end(). Fix it by going to the unload: section if unicrash_load
+fails and just go with unicrash_unload() (the is_service won't be
+initialized here).
+
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Bill O'Donnell <bodonnel@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Andrey Albershteyn <aalbersh@redhat.com>
+---
+ scrub/xfs_scrub.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/scrub/xfs_scrub.c b/scrub/xfs_scrub.c
+index 752180d6..50565857 100644
+--- a/scrub/xfs_scrub.c
++++ b/scrub/xfs_scrub.c
+@@ -631,7 +631,7 @@ main(
+ 		fprintf(stderr,
+ 	_("%s: couldn't initialize Unicode library.\n"),
+ 				progname);
+-		goto out;
++		goto out_unicrash;
+ 	}
+ 
+ 	pthread_mutex_init(&ctx.lock, NULL);
+@@ -828,6 +828,7 @@ out:
+ 	phase_end(&all_pi, 0);
+ 	if (progress_fp)
+ 		fclose(progress_fp);
++out_unicrash:
+ 	unicrash_unload();
+ 
+ 	/*
+-- 
+2.45.2
+

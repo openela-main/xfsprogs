@@ -1,0 +1,102 @@
+From a21daa3a739194b929de644779c359949390d467 Mon Sep 17 00:00:00 2001
+From: Andrey Albershteyn <aalbersh@redhat.com>
+Date: Wed, 17 Apr 2024 18:19:30 +0200
+Subject: [PATCH] xfs_db: add helper for flist_find_type for clearer field
+ matching
+
+Make flist_find_type() more readable by unloading field type
+matching to the helper.
+
+Signed-off-by: Andrey Albershteyn <aalbersh@redhat.com>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ db/flist.c | 60 ++++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 38 insertions(+), 22 deletions(-)
+
+diff --git a/db/flist.c b/db/flist.c
+index 0a6cc5fc..ab0a0f13 100644
+--- a/db/flist.c
++++ b/db/flist.c
+@@ -400,6 +400,40 @@ flist_split(
+ 	return v;
+ }
+ 
++static flist_t *
++flist_field_match(
++	const field_t		*field,
++	fldt_t			type,
++	void			*obj,
++	int			startoff)
++{
++	flist_t			*fl;
++	int			count;
++	const ftattr_t		*fa;
++	flist_t			*nfl;
++
++	fl = flist_make(field->name);
++	fl->fld = field;
++	if (field->ftyp == type)
++		return fl;
++	count = fcount(field, obj, startoff);
++	if (!count)
++		goto out;
++	fa = &ftattrtab[field->ftyp];
++	if (!fa->subfld)
++		goto out;
++
++	nfl = flist_find_ftyp(fa->subfld, type, obj, startoff);
++	if (nfl) {
++		fl->child = nfl;
++		return fl;
++	}
++
++out:
++	flist_free(fl);
++	return NULL;
++}
++
+ /*
+  * Given a set of fields, scan for a field of the given type.
+  * Return an flist leading to the first found field
+@@ -413,33 +447,15 @@ flist_find_ftyp(
+ 	void		*obj,
+ 	int		startoff)
+ {
+-	flist_t	*fl;
+ 	const field_t	*f;
+-	int		count;
+-	const ftattr_t  *fa;
++	flist_t		*fl;
+ 
+ 	for (f = fields; f->name; f++) {
+-		fl = flist_make(f->name);
+-		fl->fld = f;
+-		if (f->ftyp == type)
++		fl = flist_field_match(f, type, obj, startoff);
++		if (fl)
+ 			return fl;
+-		count = fcount(f, obj, startoff);
+-		if (!count) {
+-			flist_free(fl);
+-			continue;
+-		}
+-		fa = &ftattrtab[f->ftyp];
+-		if (fa->subfld) {
+-			flist_t *nfl;
+-
+-			nfl = flist_find_ftyp(fa->subfld, type, obj, startoff);
+-			if (nfl) {
+-				fl->child = nfl;
+-				return fl;
+-			}
+-		}
+-		flist_free(fl);
+ 	}
++
+ 	return NULL;
+ }
+ 
+-- 
+2.45.2
+

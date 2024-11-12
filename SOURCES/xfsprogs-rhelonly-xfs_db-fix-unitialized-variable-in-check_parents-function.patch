@@ -1,0 +1,25 @@
+jdm_parentpaths() doesn't initialize count. If count happens to be
+non-zero, following loop can result in access overflow.
+
+Signed-off-by: Andrey Albershteyn <aalbersh@redhat.com>
+---
+ io/parent.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/io/parent.c b/io/parent.c
+index 8f63607ffec2..5750d98a3b75 100644
+--- a/io/parent.c
++++ b/io/parent.c
+@@ -112,7 +112,7 @@ check_parents(parent_t *parentbuf, size_t *parentbuf_size,
+ 	     jdm_fshandle_t *fshandlep, struct xfs_bstat *statp)
+ {
+ 	int error, i;
+-	__u32 count;
++	__u32 count = 0;
+ 	parent_t *entryp;
+ 
+ 	do {
+-- 
+2.42.0
+
+
