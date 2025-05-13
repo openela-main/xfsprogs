@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	6.4.0
-Release:	4%{?dist}
+Release:	5%{?dist}
 License:	GPL+ and LGPLv2+
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -116,6 +116,7 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_mandir}/man8/*
 %{_sbindir}/*
 %{_unitdir}/*
+%dir %{_datadir}/xfsprogs/
 %{mkfsdir}
 %exclude %{_sbindir}/xfs_scrub*
 %exclude %{_mandir}/man8/xfs_scrub*
@@ -150,6 +151,10 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_libdir}/*.so
 
 %changelog
+* Tue Dec 17 2024 Pavel Reichl <preichl@redhat.com> - 6.4.0-5
+- Fix missing rpm db entry for: /usr/share/xfsprogs
+- Related: RHEL-39450
+
 * Thu Aug 15 2024 Pavel Reichl <preichl@redhat.com> - 6.4.0-4
 - xfs_repair: allow symlinks with short remote targets
 - Related: RHEL-54306 and RHEL-53164
