@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	6.4.0
-Release:	5%{?dist}
+Release:	7%{?dist}
 License:	GPL+ and LGPLv2+
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -39,6 +39,9 @@ Patch12:	xfsprogs-rhelonly-xfs_db-fix-unitialized-variable-in-check_parents-func
 Patch13:	xfsprogs-6.5.0-xfs.8-xfs-fix-bounds-check-in-xfs_defer_agfl_block.patch
 # v6.9.0-270-g5a43a004: This patch is taken from the `for-next` branch.
 Patch14:	xfsprogs-for-next-xfs_repair-allow-symlinks-with-short-remote-targets.patch
+Patch15:  xfsprogs-6.14.0-xfs_repair-handling-a-block-with-bad-crc-bad-uuid-an.patch
+Patch16:  xfsprogs-for-next-xfs_repair-Bump-link-count-if-longform_dir2_rebuild-.patch
+Patch17:  xfsprogs-for-next-xfs_repair-phase6-scan-longform-entries-before-heade.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -151,6 +154,15 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_libdir}/*.so
 
 %changelog
+* Tue May 13 2025 Pavel Reichl <preichl@redhat.com> - 6.4.0-7
+- xfs unrepairable filesystem if directory block not junked in phase 3 - more
+- fixes
+- Related: RHEL-54342
+
+* Tue May 06 2025 Pavel Reichl <preichl@redhat.com> - 6.4.0-6
+- xfs unrepairable filesystem if directory block not junked in phase 3
+- Related: RHEL-54342
+
 * Tue Dec 17 2024 Pavel Reichl <preichl@redhat.com> - 6.4.0-5
 - Fix missing rpm db entry for: /usr/share/xfsprogs
 - Related: RHEL-39450
