@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	6.11.0
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	GPL-1.0-or-later AND LGPL-2.1-or-later
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -29,6 +29,10 @@ Requires:       filesystem(unmerged-sbin-symlinks)
 Provides:       /usr/sbin/fsck.xfs
 Provides:       /usr/sbin/mkfs.xfs
 %endif
+
+Patch0: v6.14-xfs_repair-handling-a-block-with-bad-crc-bad-uuid-an.patch
+Patch1: for-next-xfs_repair-Bump-link-count-if-longform_dir2_rebuild-.patch
+Patch2: for-next-xfs_repair-phase6-scan-longform-entries-before-heade.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -140,6 +144,10 @@ rm -rf $RPM_BUILD_ROOT/%{_datadir}/doc/xfsprogs/
 %{_libdir}/*.so
 
 %changelog
+* Tue May 20 2025 Pavel Reichl <preichl@redhat.com> - 6.11.0-2
+- xfs unrepairable filesystem if directory block not junked in phase 3
+- Related: RHEL-89682
+
 * Sat Nov 16 2024 Pavel Reichl <preichl@redhat.com> - 6.11.0-1
 - Update to the latest upstream version
 - Related: rhbz#2319902
