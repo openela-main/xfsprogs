@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
-Version:	6.11.0
-Release:	2%{?dist}
+Version:	6.16.0
+Release:	1%{?dist}
 License:	GPL-1.0-or-later AND LGPL-2.1-or-later
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -11,6 +11,7 @@ Source3:	https://git.kernel.org/pub/scm/docs/kernel/pgpkeys.git/plain/keys/46A7E
 
 BuildRequires:	make
 BuildRequires:	gcc
+BuildRequires:	g++
 BuildRequires:	libtool, gettext, libattr-devel, libuuid-devel
 BuildRequires:	libedit-devel, libblkid-devel >= 2.17-0.1.git5e51568
 Buildrequires:	libicu-devel >= 4.6, systemd
@@ -30,9 +31,9 @@ Provides:       /usr/sbin/fsck.xfs
 Provides:       /usr/sbin/mkfs.xfs
 %endif
 
-Patch0: v6.14-xfs_repair-handling-a-block-with-bad-crc-bad-uuid-an.patch
-Patch1: for-next-xfs_repair-Bump-link-count-if-longform_dir2_rebuild-.patch
-Patch2: for-next-xfs_repair-phase6-scan-longform-entries-before-heade.patch
+Patch0: v6.17-mkfs-fix-copy-paste-error-in-calculate_rtgroup_geome.patch
+Patch1: v6.17-xfs-do-not-propagate-ENODATA-disk-errors-into-xattr-.patch
+Patch2: v6.16-xfs_scrub_fail-reduce-security-lockdowns-to-avoid-po.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -144,6 +145,10 @@ rm -rf $RPM_BUILD_ROOT/%{_datadir}/doc/xfsprogs/
 %{_libdir}/*.so
 
 %changelog
+* Thu Oct 23 2025 Pavel Reichl <preichl@redhat.com> - 6.16.0-1
+- Rebase to upstream version v6.16
+- Related: RHEL-120641
+
 * Tue May 20 2025 Pavel Reichl <preichl@redhat.com> - 6.11.0-2
 - xfs unrepairable filesystem if directory block not junked in phase 3
 - Related: RHEL-89682

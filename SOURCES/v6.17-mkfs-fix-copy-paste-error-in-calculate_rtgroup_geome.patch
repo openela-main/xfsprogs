@@ -1,0 +1,34 @@
+From bb52ff815e546a8970f22927e12a05717f6780eb Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Sat, 11 Oct 2025 11:34:04 -0700
+Subject: [PATCH] mkfs: fix copy-paste error in calculate_rtgroup_geometry
+
+Fix this copy-paste error -- we should calculate the rt volume
+concurrency either if the user gave us an explicit option, or if they
+didn't but the rt volume is an SSD.
+
+Cc: linux-xfs@vger.kernel.org # v6.13.0
+Fixes: 34738ff0ee80de ("mkfs: allow sizing realtime allocation groups for concurrency")
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ mkfs/xfs_mkfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mkfs/xfs_mkfs.c b/mkfs/xfs_mkfs.c
+index 0511f174..bc6a28b6 100644
+--- a/mkfs/xfs_mkfs.c
++++ b/mkfs/xfs_mkfs.c
+@@ -4506,7 +4506,7 @@ _("rgsize (%s) not a multiple of fs blk size (%d)\n"),
+ 		cfg->rgsize = cfg->rtblocks;
+ 		cfg->rgcount = 0;
+ 	} else if (cli->rtvol_concurrency > 0 ||
+-		   (cli->data_concurrency == -1 && rtdev_is_solidstate(xi))) {
++		   (cli->rtvol_concurrency == -1 && rtdev_is_solidstate(xi))) {
+ 		calc_concurrency_rtgroup_geometry(cfg, cli, xi);
+ 	} else if (is_power_of_2(cfg->rtextblocks)) {
+ 		cfg->rgsize = calc_rgsize_extsize_power(cfg);
+-- 
+2.51.0
+

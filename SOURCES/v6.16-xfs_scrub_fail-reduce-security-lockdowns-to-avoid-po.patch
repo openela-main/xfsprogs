@@ -1,0 +1,105 @@
+From 15fd6fc686d5ce7640e46d44f6fa018413ce1b64 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Mon, 13 Oct 2025 16:34:24 -0700
+Subject: [PATCH] xfs_scrub_fail: reduce security lockdowns to avoid postfix
+ problems
+
+Iustin Pop reports that the xfs_scrub_fail service fails to email
+problem reports on Debian when postfix is installed.  This is apparently
+due to several factors:
+
+1. postfix's sendmail wrapper calling postdrop directly,
+2. postdrop requiring the ability to write to the postdrop group,
+3. lockdown preventing the xfs_scrub_fail@ service to have postdrop in
+   the supplemental group list or the ability to run setgid programs
+
+Item (3) could be solved by adding the whole service to the postdrop
+group via SupplementalGroups=, but that will fail if postfix is not
+installed and hence there is no postdrop group.
+
+It could also be solved by forcing msmtp to be installed, bind mounting
+msmtp into the service container, and injecting a config file that
+instructs msmtp to connect to port 25, but that in turn isn't compatible
+with systems not configured to allow an smtp server to listen on ::1.
+
+So we'll go with the less restrictive approach that e2scrub_fail@ does,
+which is to say that we just turn off all the sandboxing. :( :(
+
+Reported-by: iustin@debian.org
+Cc: linux-xfs@vger.kernel.org # v6.10.0
+Fixes: 9042fcc08eed6a ("xfs_scrub_fail: tighten up the security on the background systemd service")
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Andrey Albershteyn <aalbersh@kernel.org>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ scrub/xfs_scrub_fail@.service.in | 57 ++------------------------------
+ 1 file changed, 3 insertions(+), 54 deletions(-)
+
+diff --git a/scrub/xfs_scrub_fail@.service.in b/scrub/xfs_scrub_fail@.service.in
+index 16077888..1e205768 100644
+--- a/scrub/xfs_scrub_fail@.service.in
++++ b/scrub/xfs_scrub_fail@.service.in
+@@ -19,57 +19,6 @@ SupplementaryGroups=systemd-journal
+ # can control resource usage.
+ Slice=system-xfs_scrub.slice
+ 
+-# No realtime scheduling
+-RestrictRealtime=true
+-
+-# Make the entire filesystem readonly and /home inaccessible.
+-ProtectSystem=full
+-ProtectHome=yes
+-PrivateTmp=true
+-RestrictSUIDSGID=true
+-
+-# Emailing reports requires network access, but not the ability to change the
+-# hostname.
+-ProtectHostname=true
+-
+-# Don't let the program mess with the kernel configuration at all
+-ProtectKernelLogs=true
+-ProtectKernelModules=true
+-ProtectKernelTunables=true
+-ProtectControlGroups=true
+-ProtectProc=invisible
+-RestrictNamespaces=true
+-
+-# Can't hide /proc because journalctl needs it to find various pieces of log
+-# information
+-#ProcSubset=pid
+-
+-# Only allow the default personality Linux
+-LockPersonality=true
+-
+-# No writable memory pages
+-MemoryDenyWriteExecute=true
+-
+-# Don't let our mounts leak out to the host
+-PrivateMounts=true
+-
+-# Restrict system calls to the native arch and only enough to get things going
+-SystemCallArchitectures=native
+-SystemCallFilter=@system-service
+-SystemCallFilter=~@privileged
+-SystemCallFilter=~@resources
+-SystemCallFilter=~@mount
+-
+-# xfs_scrub needs these privileges to run, and no others
+-CapabilityBoundingSet=
+-NoNewPrivileges=true
+-
+-# Failure reporting shouldn't create world-readable files
+-UMask=0077
+-
+-# Clean up any IPC objects when this unit stops
+-RemoveIPC=true
+-
+-# No access to hardware device files
+-PrivateDevices=true
+-ProtectClock=true
++# No further restrictions because some installations may have MTAs such as
++# postfix, which require the ability to run setgid programs and other
++# foolishness.
+-- 
+2.51.0
+
