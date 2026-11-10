@@ -1,0 +1,35 @@
+From 2c054ce65a40bc7100ee63a0c944f2c801bff003 Mon Sep 17 00:00:00 2001
+From: "Darrick J. Wong" <djwong@kernel.org>
+Date: Thu, 14 Nov 2024 15:53:24 -0800
+Subject: [PATCH] xfs_repair: fix crasher in pf_queuing_worker
+
+Don't walk off the end of the inode records when we're skipping inodes
+for prefetching.  The skip loop doesn't make sense to me -- why we
+ignore the first N inodes but don't care what number they are makes
+little sense to me.  But let's fix xfs/155 to crash less, eh?
+
+Cc: <linux-xfs@vger.kernel.org> # v2.10.0
+Fixes: 2556c98bd9e6b2 ("Perform true sequential bulk read prefetching in xfs_repair Merge of master-melb:xfs-cmds:29147a by kenmcd.")
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Pavel Reichl <preichl@redhat.com>
+---
+ repair/prefetch.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/repair/prefetch.c b/repair/prefetch.c
+index 998797e3..0772ecef 100644
+--- a/repair/prefetch.c
++++ b/repair/prefetch.c
+@@ -764,6 +764,8 @@ pf_queuing_worker(
+ 			irec = next_ino_rec(irec);
+ 			num_inos += XFS_INODES_PER_CHUNK;
+ 		}
++		if (!irec)
++			break;
+ 
+ 		if (args->dirs_only && cur_irec->ino_isa_dir == 0)
+ 			continue;
+-- 
+2.53.0
+

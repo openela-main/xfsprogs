@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	6.4.0
-Release:	7%{?dist}
+Release:	9%{?dist}
 License:	GPL+ and LGPLv2+
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -42,6 +42,8 @@ Patch14:	xfsprogs-for-next-xfs_repair-allow-symlinks-with-short-remote-targets.p
 Patch15:  xfsprogs-6.14.0-xfs_repair-handling-a-block-with-bad-crc-bad-uuid-an.patch
 Patch16:  xfsprogs-for-next-xfs_repair-Bump-link-count-if-longform_dir2_rebuild-.patch
 Patch17:  xfsprogs-for-next-xfs_repair-phase6-scan-longform-entries-before-heade.patch
+Patch18:  xfsprogs-6.12.0-xfs_repair-fix-crasher-in-pf_queuing_worker.patch
+Patch19:  xfsprogs-6.12.0-xfs_repair-synthesize-incore-inode-tree-records-when.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -154,6 +156,15 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_libdir}/*.so
 
 %changelog
+* Tue Mar 31 2026 Veronika Kabatova <vkabatov@redhat.com> - 6.4.0-9
+- Rebuild to fix missing binaries due to buildsystem oversight
+
+* Tue Mar 17 2026 Pavel Reichl <preichl@redhat.com> - 6.4.0-8
+- Fix FS/XFS: xfs/155 test with 64k block and
+- FS/XFS: xfs/154 test with dax
+- Related: RHEL-145813
+- Related: RHEL-146169
+
 * Tue May 13 2025 Pavel Reichl <preichl@redhat.com> - 6.4.0-7
 - xfs unrepairable filesystem if directory block not junked in phase 3 - more
 - fixes
