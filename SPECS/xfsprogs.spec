@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	5.0.0
-Release:	12%{?dist}
+Release:	13%{?dist}
 License:	GPL+ and LGPLv2+
 Group:		System Environment/Base
 URL:		https://xfs.wiki.kernel.org
@@ -85,6 +85,7 @@ Patch64:	xfsprogs-5.19.0-mkfs-terminate-getsubopt-arrays-properly.patch
 Patch65:	xfsprogs-5.9.0-xfs-ignore-autofs-mount-table-entries.patch
 Patch66:	xfsprogs-5.10.0-xfs_repair-fix-progress-reporting.patch
 Patch67:	xfsprogs-rhelonly-mkfs-fix-man-s-default-value-for-sparse-option.patch
+Patch68:	8.8_xfs_admin-remove-eval-use-due-to-possible-command-in.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -183,6 +184,7 @@ also want to install xfsprogs.
 %patch65 -p1
 %patch66 -p1
 %patch67 -p1
+%patch68 -p1
 
 %build
 export tagname=CC
@@ -242,6 +244,10 @@ rm -rf $RPM_BUILD_ROOT/%{_mandir}/man8/xfs_scrub*
 %{_libdir}/*.so
 
 %changelog
+* Wed Nov 11 2026 Pavel Reichl <preichl@redhat.com> - 5.0.0-13
+- Fix: CVE-2026-108472
+- Related: RHEL-280030
+
 * Thu Jun 08 2023 Pavel Reichl <preichl@redhat.com> - 5.0.0-12
 - Fix xfs_repair progress reporting is not working (#2183398)
 - Fix man page default for sparse mkfs option (#2118564)
