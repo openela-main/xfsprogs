@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	6.16.0
-Release:	1%{?dist}
+Release:	2%{?dist}
 License:	GPL-1.0-or-later AND LGPL-2.1-or-later
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -34,6 +34,7 @@ Provides:       /usr/sbin/mkfs.xfs
 Patch0: v6.17-mkfs-fix-copy-paste-error-in-calculate_rtgroup_geome.patch
 Patch1: v6.17-xfs-do-not-propagate-ENODATA-disk-errors-into-xattr-.patch
 Patch2: v6.16-xfs_scrub_fail-reduce-security-lockdowns-to-avoid-po.patch
+Patch3: hotfix-rhel-10.2-xfs_admin-remove-eval-use-due-to-possible-command-in.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -145,6 +146,10 @@ rm -rf $RPM_BUILD_ROOT/%{_datadir}/doc/xfsprogs/
 %{_libdir}/*.so
 
 %changelog
+* Fri Nov 06 2026 Pavel Reichl <preichl@redhat.com> - 6.16.0-2
+- Fix: CVE-2026-108472
+- Related: RHEL-280028
+
 * Thu Oct 23 2025 Pavel Reichl <preichl@redhat.com> - 6.16.0-1
 - Rebase to upstream version v6.16
 - Related: RHEL-120641
