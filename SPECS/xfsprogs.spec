@@ -1,7 +1,7 @@
 Summary:	Utilities for managing the XFS filesystem
 Name:		xfsprogs
 Version:	6.4.0
-Release:	9%{?dist}
+Release:	10%{?dist}
 License:	GPL+ and LGPLv2+
 URL:		https://xfs.wiki.kernel.org
 Source0:	http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/%{name}-%{version}.tar.xz
@@ -44,6 +44,7 @@ Patch16:  xfsprogs-for-next-xfs_repair-Bump-link-count-if-longform_dir2_rebuild-
 Patch17:  xfsprogs-for-next-xfs_repair-phase6-scan-longform-entries-before-heade.patch
 Patch18:  xfsprogs-6.12.0-xfs_repair-fix-crasher-in-pf_queuing_worker.patch
 Patch19:  xfsprogs-6.12.0-xfs_repair-synthesize-incore-inode-tree-records-when.patch
+Patch20:  hotfix_rhel-9.8-xfs_admin-remove-eval-use-due-to-possible-command-in.patch
 
 %description
 A set of commands to use the XFS filesystem, including mkfs.xfs.
@@ -156,6 +157,10 @@ install -m 0644 %{SOURCE3} %{buildroot}%{mkfsdir}
 %{_libdir}/*.so
 
 %changelog
+* Tue Nov 10 2026 Pavel Reichl <preichl@redhat.com> - 6.4.0-10
+- Fix: Local privilege escalation via command injection in xfs_admin
+- Related: RHEL-280032
+
 * Tue Mar 31 2026 Veronika Kabatova <vkabatov@redhat.com> - 6.4.0-9
 - Rebuild to fix missing binaries due to buildsystem oversight
 
